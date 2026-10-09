@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PayrollPro — Employee Management</title>
+  <title>PayrollPro â€” Employee Management</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -34,7 +34,7 @@
       display: flex;
     }
 
-    /* ── Sidebar ── */
+    /* â”€â”€ Sidebar â”€â”€ */
     .sidebar {
       width: 220px;
       background: var(--surface);
@@ -97,7 +97,7 @@
     .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent2); }
     .nav-icon { font-size: 15px; width: 18px; text-align: center; }
 
-    /* ── Main ── */
+    /* â”€â”€ Main â”€â”€ */
     .main {
       margin-left: 220px;
       flex: 1;
@@ -147,7 +147,7 @@
 
     .content { padding: 24px 28px; flex: 1; }
 
-    /* ── Metric cards ── */
+    /* â”€â”€ Metric cards â”€â”€ */
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -170,7 +170,7 @@
     .metric-amber { border-top: 2px solid var(--amber); }
     .metric-coral { border-top: 2px solid var(--coral); }
 
-    /* ── Table ── */
+    /* â”€â”€ Table â”€â”€ */
     .table-wrap {
       background: var(--card);
       border: 1px solid var(--border);
@@ -261,7 +261,7 @@
     .action-btn:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.05); }
     .action-btn.del:hover { color: var(--coral); border-color: rgba(248,113,113,0.3); }
 
-    /* ── Modal ── */
+    /* â”€â”€ Modal â”€â”€ */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -307,7 +307,7 @@
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
     .error-msg { font-size: 11px; color: var(--coral); margin-top: 8px; min-height: 14px; }
 
-    /* ── Toast ── */
+    /* â”€â”€ Toast â”€â”€ */
     .toast {
       position: fixed;
       bottom: 24px;
@@ -330,11 +330,11 @@
     .toast.success { border-left: 3px solid var(--teal); }
     .toast.error { border-left: 3px solid var(--coral); }
 
-    /* ── Views ── */
+    /* â”€â”€ Views â”€â”€ */
     .view { display: none; }
     .view.active { display: block; }
 
-    /* ── API View ── */
+    /* â”€â”€ API View â”€â”€ */
     .api-list { display: flex; flex-direction: column; gap: 2px; }
     .api-item {
       display: flex;
@@ -362,7 +362,7 @@
     .api-path { font-family: monospace; color: var(--muted); font-size: 12px; }
     .api-desc { margin-left: auto; color: var(--dim); font-size: 11px; }
 
-    /* ── Payslip ── */
+    /* â”€â”€ Payslip â”€â”€ */
     .payslip-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -400,7 +400,7 @@
     .emp-select-wrap { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
     .emp-select-wrap label { font-size: 12px; color: var(--muted); }
 
-    /* ── Loading ── */
+    /* â”€â”€ Loading â”€â”€ */
     .loading {
       text-align: center;
       padding: 40px;
@@ -417,7 +417,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Bar chart ── */
+    /* â”€â”€ Bar chart â”€â”€ */
     .bar-chart { margin-top: 16px; }
     .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .bar-name { font-size: 11px; color: var(--muted); width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -439,16 +439,16 @@
   <nav class="nav">
     <div class="nav-label">Main</div>
     <div class="nav-item active" onclick="showView('dashboard')">
-      <span class="nav-icon">▦</span> Dashboard
+      <span class="nav-icon">â–¦</span> Dashboard
     </div>
     <div class="nav-item" onclick="showView('employees')">
-      <span class="nav-icon">◎</span> Employees
+      <span class="nav-icon">â—Ž</span> Employees
     </div>
     <div class="nav-item" onclick="showView('api')">
-      <span class="nav-icon">⌥</span> REST Endpoints
+      <span class="nav-icon">âŒ¥</span> REST Endpoints
     </div>
     <div class="nav-item" onclick="showView('payslip')">
-      <span class="nav-icon">▤</span> Payslip
+      <span class="nav-icon">â–¤</span> Payslip
     </div>
   </nav>
 </div>
@@ -467,23 +467,23 @@
       <div class="metrics" id="metrics-grid">
         <div class="metric metric-accent">
           <div class="metric-label">Total Employees</div>
-          <div class="metric-value" id="m-total">—</div>
+          <div class="metric-value" id="m-total">â€”</div>
           <div class="metric-sub">Active staff</div>
         </div>
         <div class="metric metric-teal">
           <div class="metric-label">Full-time</div>
-          <div class="metric-value" id="m-ft">—</div>
+          <div class="metric-value" id="m-ft">â€”</div>
           <div class="metric-sub">Fixed salary</div>
         </div>
         <div class="metric metric-amber">
           <div class="metric-label">Part-time</div>
-          <div class="metric-value" id="m-pt">—</div>
+          <div class="metric-value" id="m-pt">â€”</div>
           <div class="metric-sub">Hourly rate</div>
         </div>
         <div class="metric metric-coral">
           <div class="metric-label">Total Payroll</div>
-          <div class="metric-value" id="m-payroll" style="font-size:18px">—</div>
-          <div class="metric-sub" id="m-avg">Avg —</div>
+          <div class="metric-value" id="m-payroll" style="font-size:18px">â€”</div>
+          <div class="metric-sub" id="m-avg">Avg â€”</div>
         </div>
       </div>
 
@@ -520,7 +520,7 @@
     <!-- REST Endpoints -->
     <div class="view" id="view-api">
       <div style="margin-bottom:16px;font-size:12px;color:var(--muted)">
-        Base URL: <code style="background:var(--card);padding:3px 8px;border-radius:5px;color:var(--accent2)">http://localhost:8080</code>
+        Base URL: <code style="background:var(--card);padding:3px 8px;border-radius:5px;color:var(--accent2)">https://employee-payroll-api-gtbc.onrender.com</code>
       </div>
       <div class="api-list" id="api-list"></div>
     </div>
@@ -558,7 +558,7 @@
     </div>
     <div id="ft-fields">
       <div class="form-group">
-        <label class="form-label">Monthly Salary (₹)</label>
+        <label class="form-label">Monthly Salary (â‚¹)</label>
         <input class="form-input" id="f-salary" type="number" placeholder="e.g. 65000"/>
       </div>
     </div>
@@ -568,7 +568,7 @@
         <input class="form-input" id="f-hours" type="number" placeholder="e.g. 80"/>
       </div>
       <div class="form-group">
-        <label class="form-label">Hourly Rate (₹)</label>
+        <label class="form-label">Hourly Rate (â‚¹)</label>
         <input class="form-input" id="f-rate" type="number" placeholder="e.g. 400"/>
       </div>
     </div>
@@ -584,7 +584,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'http://localhost:8080/api/employees';
+const API = 'https://employee-payroll-api-gtbc.onrender.com/api/employees';
 let allEmployees = [];
 let currentView = 'dashboard';
 
@@ -603,11 +603,11 @@ const endpoints = [
   {m:'DELETE', p:'/api/employees/{id}',          d:'Delete employee'},
 ];
 
-function fmt(n){ return '₹' + Number(n).toLocaleString('en-IN'); }
+function fmt(n){ return 'â‚¹' + Number(n).toLocaleString('en-IN'); }
 
 async function fetchAll() {
   try {
-    const res = await fetch(API);
+    const res = await apiFetch(API);
     allEmployees = await res.json();
     return allEmployees;
   } catch(e) {
@@ -618,7 +618,7 @@ async function fetchAll() {
 
 async function fetchSummary() {
   try {
-    const res = await fetch(API + '/summary');
+    const res = await apiFetch(API + '/summary');
     return await res.json();
   } catch(e) { return null; }
 }
@@ -689,7 +689,7 @@ function renderEmpTable(emps) {
       <td style="font-weight:500">${e.name}</td>
       <td>${e.department}</td>
       <td><span class="badge ${e.employeeType==='FULL_TIME'?'badge-ft':'badge-pt'}">${e.employeeType==='FULL_TIME'?'Full-time':'Part-time'}</span></td>
-      <td style="color:var(--muted);font-size:12px">${e.employeeType==='FULL_TIME'?fmt(e.monthlySalary)+'/mo':e.hoursWorked+' hrs × '+fmt(e.hourlyRate)}</td>
+      <td style="color:var(--muted);font-size:12px">${e.employeeType==='FULL_TIME'?fmt(e.monthlySalary)+'/mo':e.hoursWorked+' hrs Ã— '+fmt(e.hourlyRate)}</td>
       <td class="salary-cell">${fmt(e.salary)}</td>
       <td><div class="action-btns">
         <button class="action-btn del" onclick="deleteEmployee(${e.id})">Remove</button>
@@ -724,7 +724,7 @@ function renderPayslip() {
   <div class="payslip-card">
     <div class="payslip-header-bar">
       <div class="payslip-company">ABC Technologies Pvt. Ltd.</div>
-      <div class="payslip-sub">Employee Payslip — Monthly</div>
+      <div class="payslip-sub">Employee Payslip â€” Monthly</div>
     </div>
     <div class="payslip-body">
       <div class="payslip-row"><span class="label">Employee</span><span style="font-weight:500">${emp.name}</span></div>
@@ -802,7 +802,7 @@ async function addEmployee() {
     url  = API+'/parttime';
   }
   try {
-    const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body});
+    const res = await apiFetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body});
     if (res.ok) {
       closeModal();
       showToast('Employee added successfully!', 'success');
@@ -819,7 +819,7 @@ async function addEmployee() {
 async function deleteEmployee(id) {
   if (!confirm('Remove this employee?')) return;
   try {
-    const res = await fetch(API+'/'+id, {method:'DELETE'});
+    const res = await apiFetch(API+'/'+id, {method:'DELETE'});
     if (res.ok) {
       showToast('Employee removed.', 'success');
       allEmployees = [];
@@ -831,13 +831,124 @@ async function deleteEmployee(id) {
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
-  t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
+  t.textContent = (type==='success'?'âœ“ ':'âœ• ') + msg;
   t.className = `toast ${type} show`;
   setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
+const AUTH_API = 'https://employee-payroll-api-gtbc.onrender.com/api/auth';
+let authMode = 'login';
+
+function showAuthScreen() {
+  let panel = document.getElementById('auth-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'auth-panel';
+    panel.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#0a0a0f;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Arial,sans-serif;color:#f0f0f5';
+    panel.innerHTML = `
+      <form id="auth-form" style="width:100%;max-width:380px;background:#16161f;border:1px solid #333;padding:28px;border-radius:16px">
+        <h2 style="margin-bottom:8px">Payroll<span style="color:#a78bfa">Pro</span></h2>
+        <p id="auth-subtitle" style="color:#aaa;margin-bottom:22px">Sign in to your payroll dashboard</p>
+        <label for="auth-username">Username</label>
+        <input id="auth-username" required autocomplete="username" style="display:block;box-sizing:border-box;width:100%;margin:8px 0 16px;padding:12px;border-radius:8px;background:#0a0a0f;color:white;border:1px solid #444">
+        <label for="auth-password">Password</label>
+        <input id="auth-password" type="password" required minlength="6" autocomplete="current-password" style="display:block;box-sizing:border-box;width:100%;margin:8px 0 16px;padding:12px;border-radius:8px;background:#0a0a0f;color:white;border:1px solid #444">
+        <p id="auth-error" role="alert" style="color:#f87171;margin:8px 0"></p>
+        <button id="auth-submit" type="submit" style="width:100%;padding:12px;background:#6c63ff;color:white;border:0;border-radius:8px;cursor:pointer">Sign In</button>
+        <button id="auth-toggle" type="button" style="width:100%;margin-top:12px;padding:10px;background:transparent;color:#c4b5fd;border:0;cursor:pointer">Create an account</button>
+      </form>`;
+    document.body.appendChild(panel);
+
+    document.getElementById('auth-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = document.getElementById('auth-submit');
+      const error = document.getElementById('auth-error');
+      button.disabled = true;
+      error.textContent = '';
+
+      try {
+        const response = await fetch(AUTH_API + (authMode === 'login' ? '/login' : '/register'), {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+          body: JSON.stringify({
+            username: document.getElementById('auth-username').value.trim(),
+            password: document.getElementById('auth-password').value
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.token) {
+          throw new Error(data.message || (response.status === 409 ? 'Username already exists.' : 'Authentication failed. Check your details.'));
+        }
+
+        sessionStorage.setItem('payroll_token', data.token);
+        sessionStorage.setItem('payroll_username', data.username || '');
+        initApp();
+      } catch (err) {
+        error.textContent = err.message || 'Could not connect to the backend.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('auth-toggle').addEventListener('click', () => {
+      authMode = authMode === 'login' ? 'register' : 'login';
+      document.getElementById('auth-subtitle').textContent =
+        authMode === 'login' ? 'Sign in to your payroll dashboard' : 'Create your payroll account';
+      document.getElementById('auth-submit').textContent =
+        authMode === 'login' ? 'Sign In' : 'Register';
+      document.getElementById('auth-toggle').textContent =
+        authMode === 'login' ? 'Create an account' : 'Back to sign in';
+      document.getElementById('auth-password').autocomplete =
+        authMode === 'login' ? 'current-password' : 'new-password';
+      document.getElementById('auth-error').textContent = '';
+    });
+  }
+
+  panel.style.display = 'flex';
+}
+
+async function apiFetch(url, options = {}) {
+  const token = sessionStorage.getItem('payroll_token');
+  const headers = new Headers(options.headers || {});
+  if (token) headers.set('Authorization', 'Bearer ' + token);
+
+  const response = await fetch(url, {...options, headers});
+  if (response.status === 401) {
+    sessionStorage.removeItem('payroll_token');
+    showAuthScreen();
+  }
+  return response;
+}
+
+function initApp() {
+  const token = sessionStorage.getItem('payroll_token');
+  if (!token) {
+    showAuthScreen();
+    return;
+  }
+
+  const panel = document.getElementById('auth-panel');
+  if (panel) panel.style.display = 'none';
+
+  if (!document.getElementById('payroll-logout')) {
+    const button = document.createElement('button');
+    button.id = 'payroll-logout';
+    button.className = 'btn btn-ghost';
+    button.textContent = 'Sign Out';
+    button.style.marginLeft = '10px';
+    button.onclick = () => {
+      sessionStorage.removeItem('payroll_token');
+      sessionStorage.removeItem('payroll_username');
+      location.reload();
+    };
+    document.querySelector('.topbar').appendChild(button);
+  }
+
+  initApp();
+}
 // Init
-loadDashboard();
+initApp();
 </script>
 </body>
 </html>
