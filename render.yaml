@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: employee-payroll-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DB_URL
+        value: jdbc:mysql://employee-payroll-mysql-employee-payroll-db.d.aivencloud.com:12421/payroll_db?sslMode=REQUIRED&serverTimezone=UTC
+      - key: DB_USERNAME
+        value: avnadmin
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: "86400000"
