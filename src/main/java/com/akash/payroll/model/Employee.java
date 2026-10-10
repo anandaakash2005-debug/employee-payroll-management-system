@@ -24,6 +24,9 @@ public abstract class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     @NotBlank(message = "Name is required")
     @Column(nullable = false)
     private String name;
@@ -45,4 +48,6 @@ public abstract class Employee {
      * Mirrors the original abstract calculateSalary() exactly.
      */
     public abstract double calculateSalary();
+
+    public abstract java.math.BigDecimal calculatePay();
 }

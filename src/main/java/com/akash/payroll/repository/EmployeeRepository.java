@@ -10,6 +10,10 @@ import java.util.List;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Employee e where e.id = :id")
+    java.util.Optional<Employee> findLockedById(@org.springframework.data.repository.query.Param("id") Long id);
+
     // Find all employees in a department (case-insensitive)
     List<Employee> findByDepartmentIgnoreCase(String department);
 

@@ -21,6 +21,33 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> missingRoute(Exception ex) {
+        return errorResponse(HttpStatus.NOT_FOUND, "Not Found", "Endpoint not found");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> unsupportedMethod(Exception ex) {
+        return errorResponse(HttpStatus.METHOD_NOT_ALLOWED, "Method Not Allowed", "Method not supported for this endpoint");
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> forbidden(Exception ex) {
+        return errorResponse(HttpStatus.FORBIDDEN, "Forbidden", "Administrator access is required");
+    }
+
+    @ExceptionHandler(CompensationConflictException.class)
+    public ResponseEntity<Map<String, Object>> conflict(CompensationConflictException ex) {
+        return errorResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler({org.springframework.dao.TransientDataAccessException.class,
+            org.springframework.dao.DataAccessResourceFailureException.class})
+    public ResponseEntity<Map<String, Object>> transientFailure(Exception ex) {
+        log.warn("Transient database operation failed ({})", ex.getClass().getSimpleName());
+        return errorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "Database temporarily unavailable; check history before retrying");
+    }
+
     @ExceptionHandler(EmployeeNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleEmployeeNotFound(
             EmployeeNotFoundException ex, WebRequest request) {
@@ -87,7 +114,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(Exception ex, WebRequest request) {
         String message = ex instanceof IllegalArgumentException && ex.getMessage() != null
                 ? ex.getMessage()
-                : "Request body is invalid";
+                : "Invalid request value or JSON; dates must be valid YYYY-MM-DD values";
         return errorResponse(HttpStatus.BAD_REQUEST, "Bad Request", message);
     }
 

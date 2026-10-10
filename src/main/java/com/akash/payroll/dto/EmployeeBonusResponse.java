@@ -14,7 +14,8 @@ public record EmployeeBonusResponse(
         LocalDate bonusDate,
         String reason,
         String status,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String createdBy
 ) {
     public static EmployeeBonusResponse from(EmployeeBonus bonus) {
         return new EmployeeBonusResponse(
@@ -25,7 +26,8 @@ public record EmployeeBonusResponse(
                 bonus.getBonusDate(),
                 bonus.getReason(),
                 bonus.getStatus().name(),
-                bonus.getCreatedAt()
+                bonus.getCreatedAt(),
+                bonus.getCreatedBy()
         );
     }
 }

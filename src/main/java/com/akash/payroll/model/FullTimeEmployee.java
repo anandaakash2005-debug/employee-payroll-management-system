@@ -19,10 +19,15 @@ import lombok.Setter;
 public class FullTimeEmployee extends Employee {
 
     @Positive(message = "Monthly salary must be positive")
-    @Column(name = "monthly_salary", nullable = false)
-    private double monthlySalary;
+    @jakarta.validation.constraints.Digits(integer = 10, fraction = 2)
+    @Column(name = "monthly_salary", nullable = false, precision = 12, scale = 2)
+    private java.math.BigDecimal monthlySalary;
 
     public FullTimeEmployee(String name, String department, double monthlySalary) {
+        this(name, department, java.math.BigDecimal.valueOf(monthlySalary));
+    }
+
+    public FullTimeEmployee(String name, String department, java.math.BigDecimal monthlySalary) {
         super(name, department);
         this.monthlySalary = monthlySalary;
     }
@@ -32,6 +37,9 @@ public class FullTimeEmployee extends Employee {
      */
     @Override
     public double calculateSalary() {
-        return monthlySalary;
+        return calculatePay().doubleValue();
     }
+
+    @Override
+    public java.math.BigDecimal calculatePay() { return monthlySalary; }
 }

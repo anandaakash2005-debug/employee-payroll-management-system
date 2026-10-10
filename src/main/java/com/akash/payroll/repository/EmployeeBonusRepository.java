@@ -11,6 +11,9 @@ import java.util.List;
 public interface EmployeeBonusRepository
         extends JpaRepository<EmployeeBonus, Long> {
 
+    boolean existsByEmployee_IdAndBonusDateAndAmountAndReason(Long employeeId,
+            java.time.LocalDate date, java.math.BigDecimal amount, String reason);
+
     List<EmployeeBonus> findByEmployee_IdOrderByBonusDateDesc(
             Long employeeId);
 }

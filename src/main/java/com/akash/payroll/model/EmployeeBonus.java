@@ -39,9 +39,13 @@ public class EmployeeBonus {
     private String reason;
 
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
     @Column(nullable = false)
     private BonusStatus status = BonusStatus.PENDING;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
 }

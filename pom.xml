@@ -37,6 +37,14 @@
 
     <!-- Dependencies -->
     <dependencies>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
 
         <!-- ==================== SPRING BOOT ==================== -->
 
@@ -130,6 +138,16 @@
 
         <!-- H2 In-Memory Database for Tests -->
         <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
@@ -176,6 +194,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
 
                 <configuration>
+                    <mainClass>com.akash.payroll.PayrollApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

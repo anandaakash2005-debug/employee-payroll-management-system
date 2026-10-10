@@ -11,11 +11,31 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "salary_increments")
+@Table(name = "salary_increments", uniqueConstraints = @UniqueConstraint(
+        name = "uk_increment_employee_date", columnNames = {"employee_id", "effective_date"}))
 @Getter
 @Setter
 @NoArgsConstructor
 public class SalaryIncrement {
+
+    public enum Status { SCHEDULED, APPLIED, CANCELLED }
+
+    @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
+    private Status status = Status.SCHEDULED;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancelled_by", length = 255)
+    private String cancelledBy;
 
     public enum PayBasis {
         MONTHLY, HOURLY
@@ -30,6 +50,7 @@ public class SalaryIncrement {
     private Employee employee;
 
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
     @Column(name = "pay_basis", nullable = false)
     private PayBasis payBasis;
 
@@ -47,6 +68,6 @@ public class SalaryIncrement {
     @Column(nullable = false, length = 500)
     private String reason;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }

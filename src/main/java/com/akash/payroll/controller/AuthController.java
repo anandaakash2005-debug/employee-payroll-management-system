@@ -33,6 +33,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
 
+        if (request.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("Password must not exceed 72 UTF-8 bytes");
+        }
+
         if (userRepository.existsByUsername(request.getUsername())) {
             AuthResponse response = new AuthResponse(null, null, null, "Username already exists");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);

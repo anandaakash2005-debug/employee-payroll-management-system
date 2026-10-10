@@ -15,7 +15,12 @@ public record SalaryIncrementResponse(
         BigDecimal newRate,
         LocalDate effectiveDate,
         String reason,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String status,
+        String createdBy,
+        LocalDateTime appliedAt,
+        LocalDateTime cancelledAt,
+        String cancelledBy
 ) {
     public static SalaryIncrementResponse from(SalaryIncrement increment) {
         return new SalaryIncrementResponse(
@@ -27,7 +32,12 @@ public record SalaryIncrementResponse(
                 increment.getNewRate(),
                 increment.getEffectiveDate(),
                 increment.getReason(),
-                increment.getCreatedAt()
+                increment.getCreatedAt(),
+                increment.getStatus().name(),
+                increment.getCreatedBy(),
+                increment.getAppliedAt(),
+                increment.getCancelledAt(),
+                increment.getCancelledBy()
         );
     }
 }

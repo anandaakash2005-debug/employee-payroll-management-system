@@ -23,11 +23,17 @@ public class PartTimeEmployee extends Employee {
     private int hoursWorked;
 
     @Positive(message = "Hourly rate must be positive")
-    @Column(name = "hourly_rate", nullable = false)
-    private double hourlyRate;
+    @jakarta.validation.constraints.Digits(integer = 10, fraction = 2)
+    @Column(name = "hourly_rate", nullable = false, precision = 12, scale = 2)
+    private java.math.BigDecimal hourlyRate;
 
     public PartTimeEmployee(String name, String department,
                             int hoursWorked, double hourlyRate) {
+        this(name, department, hoursWorked, java.math.BigDecimal.valueOf(hourlyRate));
+    }
+
+    public PartTimeEmployee(String name, String department,
+                            int hoursWorked, java.math.BigDecimal hourlyRate) {
         super(name, department);
         this.hoursWorked = hoursWorked;
         this.hourlyRate  = hourlyRate;
@@ -38,6 +44,11 @@ public class PartTimeEmployee extends Employee {
      */
     @Override
     public double calculateSalary() {
-        return hoursWorked * hourlyRate;
+        return calculatePay().doubleValue();
+    }
+
+    @Override
+    public java.math.BigDecimal calculatePay() {
+        return hourlyRate.multiply(java.math.BigDecimal.valueOf(hoursWorked));
     }
 }

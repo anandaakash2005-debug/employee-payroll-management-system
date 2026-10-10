@@ -20,6 +20,18 @@ public class CompensationController {
 
     private final CompensationService compensationService;
 
+    @DeleteMapping("/salary-increments/{incrementId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public SalaryIncrementResponse cancelIncrement(@PathVariable Long employeeId, @PathVariable Long incrementId) {
+        return compensationService.cancelIncrement(employeeId, incrementId);
+    }
+
+    @PutMapping("/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deactivate(@PathVariable Long employeeId) {
+        compensationService.deactivate(employeeId);
+    }
+
     @PutMapping("/salary-increments")
     @PreAuthorize("hasRole('ADMIN')")
     public SalaryIncrementResponse incrementSalary(

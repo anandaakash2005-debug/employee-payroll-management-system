@@ -13,6 +13,7 @@ import lombok.Data;
 public class EmployeeResponse {
 
     private Long   id;
+    private boolean active;
     private String name;
     private String department;
     private String employeeType;
@@ -32,18 +33,19 @@ public class EmployeeResponse {
     public static EmployeeResponse from(Employee emp) {
         EmployeeResponse res = new EmployeeResponse();
         res.setId(emp.getId());
+        res.setActive(emp.isActive());
         res.setName(emp.getName());
         res.setDepartment(emp.getDepartment());
         res.setSalary(emp.calculateSalary());   // polymorphic call
 
         if (emp instanceof FullTimeEmployee fte) {
             res.setEmployeeType("FULL_TIME");
-            res.setMonthlySalary(fte.getMonthlySalary());
+            res.setMonthlySalary(fte.getMonthlySalary().doubleValue());
 
         } else if (emp instanceof PartTimeEmployee pte) {
             res.setEmployeeType("PART_TIME");
             res.setHoursWorked(pte.getHoursWorked());
-            res.setHourlyRate(pte.getHourlyRate());
+            res.setHourlyRate(pte.getHourlyRate().doubleValue());
         }
 
         return res;

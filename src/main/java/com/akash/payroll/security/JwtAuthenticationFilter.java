@@ -55,10 +55,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-        } catch (Exception e) {
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException | org.springframework.security.core.userdetails.UsernameNotFoundException e) {
             // Invalid token - let the request continue unauthenticated;
             // Spring Security will reject it at the authorization stage.
-            logger.warn("JWT validation failed: " + e.getMessage());
+            logger.debug("JWT rejected");
+        } catch (org.springframework.dao.DataAccessException e) {
+            logger.error("Authentication database unavailable (" + e.getClass().getSimpleName() + ")");
+            response.setStatus(503);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":503,\"error\":\"Service Unavailable\",\"message\":\"Authentication temporarily unavailable\"}");
+            return;
         }
 
         filterChain.doFilter(request, response);

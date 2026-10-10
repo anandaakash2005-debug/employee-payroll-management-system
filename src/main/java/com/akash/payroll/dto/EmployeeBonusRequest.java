@@ -2,7 +2,7 @@
 package com.akash.payroll.dto;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,10 +20,10 @@ public class EmployeeBonusRequest {
 
     @NotNull(message = "Bonus amount is required")
     @DecimalMin(value = "0.01", message = "Bonus must be greater than zero")
+    @Digits(integer = 10, fraction = 2)
     private BigDecimal amount;
 
     @NotNull(message = "Bonus date is required")
-    @FutureOrPresent(message = "Bonus date cannot be in the past")
     private LocalDate bonusDate;
 
     @NotBlank(message = "Bonus reason is required")

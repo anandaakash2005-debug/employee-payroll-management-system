@@ -4,7 +4,7 @@ package com.akash.payroll.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,10 +20,10 @@ public class SalaryIncrementRequest {
 
     @NotNull(message = "New rate is required")
     @DecimalMin(value = "0.01", message = "New rate must be greater than zero")
+    @Digits(integer = 10, fraction = 2)
     private BigDecimal newRate;
 
     @NotNull(message = "Effective date is required")
-    @PastOrPresent(message = "Effective date cannot be in the future")
     private LocalDate effectiveDate;
 
     @NotBlank(message = "Reason is required")

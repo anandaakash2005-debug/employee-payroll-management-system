@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
  * Skips seeding if data already exists.
  */
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "payroll.seed-demo", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class DataLoader implements CommandLineRunner {

@@ -21,23 +21,26 @@ import java.util.List;
 public class PayrollService {
 
     private final EmployeeRepository repo;
+    private final CompensationService compensation;
 
     // ── Add Employees ──────────────────────────────────────────────
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public EmployeeResponse addFullTimeEmployee(
             FullTimeEmployeeRequest req) {
 
         FullTimeEmployee emp = new FullTimeEmployee(
                 req.getName(),
                 req.getDepartment(),
-                req.getMonthlySalary()
+                CompensationService.money(req.getMonthlySalary())
         );
 
         return EmployeeResponse.from(repo.save(emp));
     }
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public EmployeeResponse addPartTimeEmployee(
             PartTimeEmployeeRequest req) {
 
@@ -45,7 +48,7 @@ public class PayrollService {
                 req.getName(),
                 req.getDepartment(),
                 req.getHoursWorked(),
-                req.getHourlyRate()
+                CompensationService.money(req.getHourlyRate())
         );
 
         return EmployeeResponse.from(repo.save(emp));
@@ -56,11 +59,12 @@ public class PayrollService {
     public List<EmployeeResponse> getAllEmployees() {
         return repo.findAll()
                 .stream()
-                .map(EmployeeResponse::from)
+                .map(this::currentResponse)
                 .toList();
     }
 
     public EmployeeResponse getById(Long id) {
+        compensation.reconcile(id);
         Employee emp = repo.findById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
@@ -70,38 +74,39 @@ public class PayrollService {
     public List<EmployeeResponse> getByDepartment(String department) {
         return repo.findByDepartmentIgnoreCase(department)
                 .stream()
-                .map(EmployeeResponse::from)
+                .map(this::currentResponse)
                 .toList();
     }
 
     public List<EmployeeResponse> searchByName(String keyword) {
         return repo.findByNameContainingIgnoreCase(keyword)
                 .stream()
-                .map(EmployeeResponse::from)
+                .map(this::currentResponse)
                 .toList();
     }
 
     public List<EmployeeResponse> getFullTimeEmployees() {
         return repo.findAllFullTimeEmployees()
                 .stream()
-                .map(EmployeeResponse::from)
+                .map(this::currentResponse)
                 .toList();
     }
 
     public List<EmployeeResponse> getPartTimeEmployees() {
         return repo.findAllPartTimeEmployees()
                 .stream()
-                .map(EmployeeResponse::from)
+                .map(this::currentResponse)
                 .toList();
     }
 
     // ── Update Full-Time Employee ──────────────────────────────────
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public EmployeeResponse updateFullTimeEmployee(
             Long id, FullTimeEmployeeRequest req) {
 
-        Employee emp = repo.findById(id)
+        Employee emp = repo.findLockedById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
         if (!(emp instanceof FullTimeEmployee fte)) {
@@ -112,10 +117,7 @@ public class PayrollService {
         }
 
         // Salary changes must use the audited compensation endpoint.
-        if (Double.compare(
-                req.getMonthlySalary(),
-                fte.getMonthlySalary()
-        ) != 0) {
+        if (req.getMonthlySalary().compareTo(fte.getMonthlySalary()) != 0) {
             throw new IllegalArgumentException(
                     "Use the salary-increments endpoint to change salary "
                             + "so the change is recorded in history."
@@ -131,10 +133,11 @@ public class PayrollService {
     // ── Update Part-Time Employee ───────────────────────────────────
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public EmployeeResponse updatePartTimeEmployee(
             Long id, PartTimeEmployeeRequest req) {
 
-        Employee emp = repo.findById(id)
+        Employee emp = repo.findLockedById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
         if (!(emp instanceof PartTimeEmployee pte)) {
@@ -145,10 +148,7 @@ public class PayrollService {
         }
 
         // Hourly-rate changes must use the audited compensation endpoint.
-        if (Double.compare(
-                req.getHourlyRate(),
-                pte.getHourlyRate()
-        ) != 0) {
+        if (req.getHourlyRate().compareTo(pte.getHourlyRate()) != 0) {
             throw new IllegalArgumentException(
                     "Use the salary-increments endpoint to change hourly rate "
                             + "so the change is recorded in history."
@@ -165,8 +165,9 @@ public class PayrollService {
     // ── Delete Employee ────────────────────────────────────────────
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public void deleteEmployee(Long id) {
-        if (!repo.existsById(id)) {
+        if (repo.findLockedById(id).isEmpty()) {
             throw new EmployeeNotFoundException(id);
         }
 
@@ -179,24 +180,28 @@ public class PayrollService {
 
         List<Employee> all = repo.findAll();
 
+        for (Employee employee : all) compensation.reconcile(employee.getId());
+        all = repo.findAll().stream().filter(Employee::isActive).toList();
         int total = all.size();
-        int fullTimeCount = repo.findAllFullTimeEmployees().size();
-        int partTimeCount = repo.findAllPartTimeEmployees().size();
-
-        double totalPayroll = all.stream()
-                .mapToDouble(Employee::calculateSalary)
-                .sum();
-
-        double avgSalary = total > 0
-                ? totalPayroll / total
-                : 0.0;
+        int fullTimeCount = (int) all.stream().filter(FullTimeEmployee.class::isInstance).count();
+        int partTimeCount = total - fullTimeCount;
+        java.math.BigDecimal totalPayroll = all.stream().map(Employee::calculatePay)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        java.math.BigDecimal avgSalary = total == 0 ? java.math.BigDecimal.ZERO
+                : totalPayroll.divide(java.math.BigDecimal.valueOf(total), 2, java.math.RoundingMode.HALF_UP);
 
         return new PayrollSummaryResponse(
                 total,
                 fullTimeCount,
                 partTimeCount,
-                totalPayroll,
-                avgSalary
+                totalPayroll.doubleValue(),
+                avgSalary.doubleValue()
         );
+    }
+    private EmployeeResponse currentResponse(Employee employee) {
+        compensation.reconcile(employee.getId());
+        return EmployeeResponse.from(repo.findById(employee.getId())
+                .orElseThrow(() -> new EmployeeNotFoundException(employee.getId())));
     }
 }
