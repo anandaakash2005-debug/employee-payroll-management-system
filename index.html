@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
+      color-scheme: dark;
       --bg:        #0a0a0f;
       --surface:   #111118;
       --card:      #16161f;
@@ -41,7 +42,7 @@
     }
     [hidden] { display: none !important; }
     :focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
-    button, input, select { font: inherit; color: inherit; }
+    button, input, select, textarea { font: inherit; color: inherit; }
     button:disabled { opacity: 0.55; cursor: not-allowed; }
     .sr-only {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -102,9 +103,9 @@
       background: var(--surface);
       position: sticky; top: 0; z-index: 5;
     }
-    .page-title { font-family: var(--display); font-size: 16px; font-weight: 700; }
+    .page-title { font-family: var(--display); font-size: 16px; font-weight: 700; outline: none; }
     .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-    .user-chip { font-size: 12px; color: var(--muted); }
+    .user-chip { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
     .btn {
       padding: 9px 18px; border-radius: 8px; font-size: 13px; cursor: pointer;
       border: 1px solid transparent; transition: background 0.15s, transform 0.15s; font-weight: 500;
@@ -146,21 +147,33 @@
     .badge-ft { background: var(--ft-bg); color: var(--ft-color); }
     .badge-pt { background: var(--pt-bg); color: var(--pt-color); }
     .badge-unk { background: rgba(255,255,255,0.08); color: var(--muted); }
+    .badge-admin { background: rgba(108,99,255,0.22); color: #c9bcff; border: 1px solid rgba(167,139,250,0.35); }
+    .badge-user { background: rgba(255,255,255,0.08); color: var(--muted); border: 1px solid var(--border2); }
+    .badge-pending { background: rgba(251,191,36,0.14); color: var(--amber); border: 1px solid rgba(251,191,36,0.35); }
+    .badge-paid { background: rgba(45,212,191,0.14); color: var(--teal); border: 1px solid rgba(45,212,191,0.35); }
+    .badge-cancelled { background: rgba(248,113,113,0.14); color: var(--coral); border: 1px solid rgba(248,113,113,0.35); }
     .salary-cell { font-family: var(--display); font-size: 13px; font-weight: 600; white-space: nowrap; }
     .id-cell { color: var(--dim); font-size: 12px; }
     .detail-cell { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .nowrap { white-space: nowrap; }
+    .reason-cell { min-width: 180px; max-width: 360px; white-space: normal; overflow-wrap: anywhere; color: var(--muted); }
+    .actions-cell { min-width: 250px; }
+    .act-group { display: flex; gap: 6px; flex-wrap: wrap; }
     .action-btn {
       padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
       border: 1px solid var(--border2); background: transparent; color: var(--muted);
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      transition: background 0.15s, color 0.15s, border-color 0.15s; white-space: nowrap;
     }
-    .action-btn:hover:not(:disabled) { color: var(--coral); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+    .action-btn:hover:not(:disabled) { color: var(--text); background: rgba(255,255,255,0.06); }
+    .action-btn.safe:hover:not(:disabled) { color: var(--accent2); border-color: rgba(167,139,250,0.5); background: rgba(108,99,255,0.12); }
+    .action-btn.danger:hover:not(:disabled) { color: var(--coral); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
 
     .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
     .search-input, .filter-select, .form-input, .form-select {
       background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
       padding: 9px 12px; font-size: 13px; color: var(--text); outline: none; min-height: 40px;
     }
+    textarea.form-input { min-height: 84px; resize: vertical; line-height: 1.4; }
     .search-input { width: 280px; max-width: 100%; }
     .search-input:focus, .filter-select:focus, .form-input:focus, .form-select:focus { border-color: var(--accent); }
     .search-input::placeholder, .form-input::placeholder { color: var(--dim); }
@@ -186,6 +199,8 @@
     .m-delete { background: rgba(248,113,113,0.15); color: var(--coral); }
     .api-path { font-family: ui-monospace, Consolas, monospace; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
     .api-desc { margin-left: auto; color: var(--dim); font-size: 11px; }
+    .api-extra { flex-basis: 100%; color: var(--dim); font-size: 11px; padding-left: 70px; }
+    .api-section { font-size: 10px; font-weight: 500; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; margin: 14px 0 4px; }
 
     /* ── Payslip ── */
     .payslip-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; max-width: 520px; overflow: hidden; }
@@ -235,15 +250,36 @@
     .modal {
       background: var(--card); border: 1px solid var(--border2); border-radius: 16px; padding: 28px;
       width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
       animation: slideUp 0.2s ease;
     }
+    .modal.modal-wide { max-width: 880px; }
     @keyframes slideUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
     .modal-title { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 20px; }
     .form-group { margin-bottom: 14px; }
     .form-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
     .form-input, .form-select { width: 100%; }
+    .form-help { font-size: 11px; color: var(--dim); margin-top: 4px; display: flex; justify-content: space-between; gap: 8px; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
     .error-msg { font-size: 12px; color: var(--coral); margin-top: 8px; min-height: 16px; }
+    .emp-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; margin-bottom: 16px; }
+    .emp-summary .payslip-row .label { flex: none; }
+    .emp-summary .payslip-row span:last-child { text-align: right; overflow-wrap: anywhere; }
+
+    /* ── Compensation history ── */
+    .hist-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .hist-head .modal-title { margin-bottom: 6px; }
+    .hist-emp-name { font-family: var(--display); font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+    .hist-emp-meta { font-size: 12px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .tab {
+      background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; margin-bottom: -1px;
+      font-size: 13px; color: var(--muted); cursor: pointer; font-weight: 500;
+    }
+    .tab:hover { color: var(--text); }
+    .tab[aria-selected="true"] { color: var(--accent2); border-bottom-color: var(--accent); }
+    .hist-panel { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-height: 140px; }
+    .hist-note { font-size: 11px; color: var(--dim); margin-top: 10px; }
 
     /* ── Toast ── */
     .toast {
@@ -320,6 +356,7 @@
       .main { margin-left: 0; min-height: 0; }
       .topbar { padding: 12px 16px; position: static; }
       .content { padding: 16px; }
+      .api-extra { padding-left: 0; }
     }
     @media (max-width: 520px) {
       .metrics { grid-template-columns: 1fr; }
@@ -330,6 +367,7 @@
       .modal { padding: 20px; }
       .toast { left: 16px; right: 16px; bottom: 16px; max-width: none; }
       .startup-card { padding: 26px 20px; }
+      .modal-actions { flex-wrap: wrap; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -408,10 +446,10 @@
 <!-- Main -->
 <div class="main">
   <header class="topbar">
-    <h2 class="page-title" id="page-title">Dashboard</h2>
+    <h2 class="page-title" id="page-title" tabindex="-1">Dashboard</h2>
     <div class="topbar-actions">
       <span class="user-chip" id="user-chip" hidden></span>
-      <button class="btn btn-primary" id="open-modal" type="button">+ Add Employee</button>
+      <button class="btn btn-primary" id="open-modal" type="button" hidden>+ Add Employee</button>
       <button class="btn btn-ghost" id="logout-btn" type="button" hidden>Sign Out</button>
     </div>
   </header>
@@ -474,7 +512,7 @@
     <!-- REST Endpoints -->
     <section class="view" id="view-api" aria-label="REST endpoints">
       <div class="base-url">Base URL: <code id="api-base-label"></code></div>
-      <p class="api-note">Endpoint patterns used by this project. They are listed as documented in the project, not verified live from this page.</p>
+      <p class="api-note">Endpoint patterns used by this project. They are listed as documented in the project, not verified live from this page. Every endpoint except login, register and health expects a bearer token; the backend alone decides who is permitted.</p>
       <div class="api-list" id="api-list"></div>
     </section>
 
@@ -533,6 +571,95 @@
   </div>
 </div>
 
+<!-- Increase Salary / Hourly Rate Modal (admin) -->
+<div class="modal-overlay" id="inc-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inc-title">
+    <form id="inc-form" novalidate>
+      <h3 class="modal-title" id="inc-title">Increase Salary</h3>
+      <div class="emp-summary">
+        <div class="payslip-row"><span class="label">Employee</span><span id="inc-emp-name">—</span></div>
+        <div class="payslip-row"><span class="label">Employee type</span><span id="inc-emp-type">—</span></div>
+        <div class="payslip-row"><span class="label" id="inc-current-label">Current rate</span><span id="inc-current">—</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inc-rate" id="inc-rate-label">New rate (₹)</label>
+        <input class="form-input" id="inc-rate" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="e.g. 65000.00" autocomplete="off" />
+        <div class="form-help"><span id="inc-rate-help">Must be higher than the current rate. Up to two decimals.</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inc-date">Effective date</label>
+        <input class="form-input" id="inc-date" type="date" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inc-reason">Reason for the increase</label>
+        <textarea class="form-input" id="inc-reason" maxlength="500" placeholder="e.g. Annual performance review"></textarea>
+        <div class="form-help"><span>Required</span><span id="inc-count" aria-hidden="true">0/500</span></div>
+      </div>
+      <div class="error-msg" id="inc-error" role="alert" aria-live="assertive"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="inc-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="inc-submit" type="submit">Save Increase</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Bonus Modal (admin) -->
+<div class="modal-overlay" id="bon-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bon-title">
+    <form id="bon-form" novalidate>
+      <h3 class="modal-title" id="bon-title">Add Bonus</h3>
+      <div class="emp-summary">
+        <div class="payslip-row"><span class="label">Employee</span><span id="bon-emp-name">—</span></div>
+        <div class="payslip-row"><span class="label">Employee ID</span><span id="bon-emp-id">—</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bon-amount">Bonus amount (₹)</label>
+        <input class="form-input" id="bon-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="e.g. 5000.00" autocomplete="off" />
+        <div class="form-help"><span>Greater than zero. Up to two decimals.</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bon-date">Bonus date</label>
+        <input class="form-input" id="bon-date" type="date" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bon-reason">Reason</label>
+        <textarea class="form-input" id="bon-reason" maxlength="500" placeholder="e.g. Project completion bonus"></textarea>
+        <div class="form-help"><span>Required</span><span id="bon-count" aria-hidden="true">0/500</span></div>
+      </div>
+      <div class="error-msg" id="bon-error" role="alert" aria-live="assertive"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="bon-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="bon-submit" type="submit">Add Bonus</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Compensation History Modal (admin) -->
+<div class="modal-overlay" id="hist-modal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+    <div class="hist-head">
+      <div>
+        <h3 class="modal-title" id="hist-title">Compensation History</h3>
+        <div class="hist-emp-name" id="hist-emp-name">—</div>
+        <div class="hist-emp-meta" id="hist-emp-meta"></div>
+      </div>
+      <span id="hist-emp-badge"></span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Compensation history sections">
+      <button class="tab" id="hist-tab-salary" type="button" role="tab" aria-selected="true" aria-controls="hist-panel-salary">Salary / Rate History</button>
+      <button class="tab" id="hist-tab-bonus" type="button" role="tab" aria-selected="false" aria-controls="hist-panel-bonus" tabindex="-1">Bonus History</button>
+    </div>
+    <div class="hist-panel" id="hist-panel-salary" role="tabpanel" aria-labelledby="hist-tab-salary"></div>
+    <div class="hist-panel" id="hist-panel-bonus" role="tabpanel" aria-labelledby="hist-tab-bonus" hidden></div>
+    <p class="hist-note">Records are loaded live from the server. Bonuses are tracked separately and are not included in base salary, payroll totals or payslips.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="hist-close" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -549,6 +676,14 @@ const HEALTH_URL   = API_ORIGIN + '/health';
 const REQUEST_TIMEOUT_MS = 45000;  // Render free tier can take a while to wake up
 const TOKEN_KEY    = 'payroll_token';
 const USERNAME_KEY = 'payroll_username';
+const ROLE_KEY     = 'payroll_role';
+
+// UI-only switch. When true, "Add Employee" and "Remove" are shown to administrators only.
+// Set to false if your backend lets regular users create/delete employees.
+// This never grants or removes real access: Spring Security remains the final authority.
+const ADMIN_ONLY_EMPLOYEE_WRITES = true;
+
+const REASON_MAX = 500;
 
 // Backend readiness (wake-up) settings.
 // The total waiting period and the per-request timeout are separate concepts:
@@ -584,6 +719,18 @@ const ENDPOINTS = [
   { m: 'POST',   p: '/api/auth/login',                   d: 'Sign in (no token needed)' },
   { m: 'POST',   p: '/api/auth/register',                d: 'Create account (no token needed)' },
   { m: 'GET',    p: '/health',                           d: 'Backend health check' }
+];
+
+// Compensation endpoint patterns (documented, not verified live from this page).
+const COMP_ENDPOINTS = [
+  { m: 'PUT',  p: '/api/employees/{employeeId}/salary-increments', d: 'Record a salary / hourly-rate increase',
+    n: 'Bearer token required. Body: newRate (number > current rate, max 2 decimals), effectiveDate (YYYY-MM-DD, not in the past), reason (required, max 500 chars). Full-time = monthly salary, part-time = hourly rate.' },
+  { m: 'GET',  p: '/api/employees/{employeeId}/salary-increments', d: 'Salary / rate increase history',
+    n: 'Bearer token required. Returns previous rate, new rate, pay basis (MONTHLY or HOURLY), effective date, reason and creation timestamp.' },
+  { m: 'POST', p: '/api/employees/{employeeId}/bonuses',           d: 'Add an employee bonus',
+    n: 'Bearer token required. Body: amount (> 0, max 2 decimals), bonusDate (YYYY-MM-DD, not in the past), reason (required, max 500 chars). Status is set by the backend.' },
+  { m: 'GET',  p: '/api/employees/{employeeId}/bonuses',           d: 'Bonus history',
+    n: 'Bearer token required. Returns amount, bonus date, reason, status (PENDING, PAID or CANCELLED) and creation timestamp.' }
 ];
 
 const VIEW_TITLES = { dashboard: 'Dashboard', employees: 'Employees', api: 'REST Endpoints', payslip: 'Payslip Generator' };
@@ -661,6 +808,9 @@ function textOf(value, fallback) {
   if (value === null || value === undefined || String(value).trim() === '') return fallback === undefined ? '—' : fallback;
   return String(value);
 }
+function findEmployee(id) {
+  return state.employees.find(e => String(e.id) === String(id)) || null;
+}
 
 let toastTimer = null;
 function showToast(message, type) {
@@ -671,6 +821,38 @@ function showToast(message, type) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
 }
 
+/* ───────────── Dates (local calendar dates, no timezone shifting) ───────────── */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function todayLocal() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
+}
+// True only for a real calendar date written as YYYY-MM-DD.
+function isValidIsoDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+}
+function formatDate(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (!m) return String(value);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return String(value);
+  return Number(m[3]) + ' ' + MONTHS[mo - 1] + ' ' + m[1];
+}
+function formatTimestamp(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 /* ───────────── Session ───────────── */
 function getToken() {
   try { return sessionStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
@@ -678,16 +860,40 @@ function getToken() {
 function getUsername() {
   try { return sessionStorage.getItem(USERNAME_KEY) || ''; } catch (e) { return ''; }
 }
-function saveSession(token, username) {
+// Role is normalised to 'ADMIN', 'USER' or '' (missing/invalid -> least privilege).
+function normalizeRole(raw) {
+  const v = String(raw === null || raw === undefined ? '' : raw).trim().toUpperCase().replace(/^ROLE_/, '');
+  return v === 'ADMIN' || v === 'USER' ? v : '';
+}
+// Reads the role from the actual auth response; never guessed from the username.
+function extractRole(data) {
+  if (!data || typeof data !== 'object') return '';
+  const direct = normalizeRole(data.role);
+  if (direct) return direct;
+  const list = Array.isArray(data.roles) ? data.roles : (Array.isArray(data.authorities) ? data.authorities : []);
+  const names = list.map(r => normalizeRole(r && typeof r === 'object' ? (r.authority || r.name) : r)).filter(Boolean);
+  if (names.includes('ADMIN')) return 'ADMIN';
+  return names.includes('USER') ? 'USER' : '';
+}
+function getRole() {
+  try { return normalizeRole(sessionStorage.getItem(ROLE_KEY)); } catch (e) { return ''; }
+}
+// UI visibility only. The backend still enforces every permission.
+function isAdmin() { return !!getToken() && getRole() === 'ADMIN'; }
+function canManageEmployees() { return !!getToken() && (!ADMIN_ONLY_EMPLOYEE_WRITES || getRole() === 'ADMIN'); }
+
+function saveSession(token, username, role) {
   try {
     sessionStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(USERNAME_KEY, username || '');
+    sessionStorage.setItem(ROLE_KEY, role || '');
   } catch (e) { /* storage unavailable: session will not persist across reloads */ }
 }
 function clearSession() {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USERNAME_KEY);
+    sessionStorage.removeItem(ROLE_KEY);
   } catch (e) { /* ignore */ }
 }
 
@@ -799,6 +1005,19 @@ async function apiRequest(url, options) {
 }
 
 function employeeUrl(path) { return EMPLOYEE_API + (path || ''); }
+// URL for per-employee compensation endpoints; the id is always encoded.
+function compUrl(id, suffix) { return employeeUrl('/' + encodeURIComponent(String(id)) + suffix); }
+
+// Turns an error into a user-facing message. 403 is reported distinctly, and an
+// ambiguous timeout on a write warns the admin to check history before retrying.
+function errorText(e, mutating) {
+  if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
+  if (e.status === 403) return 'Permission denied: the server did not allow this action for your account.';
+  if (mutating && e.kind === 'timeout') {
+    return 'The server did not respond in time. The change may or may not have been saved — check the history before trying again.';
+  }
+  return e.message;
+}
 
 /* ───────────── Connection status (sidebar indicator) ───────────── */
 function setConnection(stateName, text) {
@@ -1130,7 +1349,76 @@ async function onConnRetry() {
   else setConnection('down', 'Backend unavailable');
 }
 
+/* ───────────── Dialog helper (new compensation dialogs) ─────────────
+   Each dialog gets Escape-to-close, backdrop-click close, a Tab focus trap and
+   focus restoration. While `busy` (a request is in flight) it cannot be closed. */
+function restoreFocus(node) {
+  if (node && document.contains(node) && typeof node.focus === 'function') node.focus();
+  else { const t = $('page-title'); if (t) t.focus(); }
+}
+
+function createDialog(overlayId, onClose) {
+  const overlay = $(overlayId);
+  const dlg = {
+    overlay: overlay,
+    busy: false,
+    lastFocus: null,
+    isOpen: function () { return overlay.classList.contains('open'); },
+    open: function (focusId) {
+      if (dlg.isOpen()) return;
+      dlg.lastFocus = document.activeElement;
+      overlay.classList.add('open');
+      setTimeout(() => { const t = $(focusId); if (t) t.focus(); }, 0);
+    },
+    close: function (force) {
+      if (!dlg.isOpen()) return;
+      if (dlg.busy && !force) return;
+      overlay.classList.remove('open');
+      dlg.busy = false;
+      if (onClose) onClose();
+      const back = dlg.lastFocus;
+      dlg.lastFocus = null;
+      restoreFocus(back);
+    }
+  };
+  overlay.addEventListener('click', event => { if (event.target === overlay) dlg.close(); });
+  overlay.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); dlg.close(); return; }
+    if (event.key !== 'Tab') return;
+    const items = Array.from(overlay.querySelectorAll('input, select, textarea, button'))
+      .filter(n => !n.disabled && n.tabIndex >= 0 && n.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  return dlg;
+}
+
+let incDlg = null, bonDlg = null, histDlg = null;   // created in bindEvents()
+let incCtx = null, bonCtx = null, hist = null;
+
+function closeCompDialogs() {
+  [incDlg, bonDlg, histDlg].forEach(d => { if (d) d.close(true); });
+}
+
 /* ───────────── Authentication UI ───────────── */
+function renderUserChip() {
+  const chip = $('user-chip');
+  clear(chip);
+  if (!getToken()) { chip.hidden = true; return; }
+  const username = getUsername();
+  const role = getRole();
+  chip.hidden = false;
+  chip.append(
+    el('span', { text: username ? 'Signed in as ' + username : 'Signed in' }),
+    el('span', {
+      class: 'badge ' + (role === 'ADMIN' ? 'badge-admin' : 'badge-user'),
+      title: role ? 'Role reported by the server' : 'No valid role returned by the server; limited access shown',
+      text: role || 'USER'
+    }));
+}
+
 function showAuthScreen(message) {
   $('auth-screen').hidden = false;
   $('auth-error').textContent = message || '';
@@ -1138,6 +1426,7 @@ function showAuthScreen(message) {
   $('user-chip').hidden = true;
   $('open-modal').hidden = true;
   closeModal();
+  closeCompDialogs();
   const box = $('conn');
   if (box.dataset.state === 'ok') setConnection('auth', 'Authentication required');
   setTimeout(() => $('auth-username').focus(), 0);
@@ -1152,7 +1441,7 @@ function hideAuthScreen() {
 function handleUnauthorized() {
   // Runs once per session: parallel 401s must not trigger repeated work.
   if (!getToken() && state.unauthorizedHandled) return;
-  clearSession();
+  clearSession();                // token, username and role
   state.unauthorizedHandled = true;
   state.loadSeq++;               // discard in-flight dashboard responses
   state.employees = [];
@@ -1205,7 +1494,8 @@ async function submitAuth(event) {
     if (!data || typeof data.token !== 'string' || !data.token) {
       throw new ApiError('The server did not return a session token. Please try again.', 0, 'http');
     }
-    saveSession(data.token, typeof data.username === 'string' ? data.username : username);
+    // Role comes only from the server response; missing/invalid -> '' (least privilege).
+    saveSession(data.token, typeof data.username === 'string' ? data.username : username, extractRole(data));
     state.unauthorizedHandled = false;
     initApp();
   } catch (err) {
@@ -1227,7 +1517,7 @@ async function submitAuth(event) {
 }
 
 function logout() {
-  clearSession();
+  clearSession();                // token, username and role
   state.unauthorizedHandled = false;
   state.loadSeq++;
   state.employees = [];
@@ -1304,13 +1594,13 @@ function badge(e) {
 function detailText(e) {
   const kind = employeeKind(e);
   if (kind === 'FT') return money(e.monthlySalary) + ' / month';
-  if (kind === 'PT') return intText(e.hoursWorked) + ' hrs × ' + money(e.hourlyRate);
+  if (kind === 'PT') return intText(e.hoursWorked) + ' hrs × ' + money(e.hourlyRate) + ' / hr';
   return '—';
 }
 
-function buildTable(headers, rows) {
+function buildTable(headers, rows, minWidth) {
   return el('div', { class: 'table-scroll' },
-    el('table', null,
+    el('table', { style: minWidth ? 'min-width:' + minWidth + 'px' : false },
       el('thead', null, el('tr', null, headers.map(h => el('th', { scope: 'col', text: h })))),
       el('tbody', null, rows)));
 }
@@ -1354,7 +1644,9 @@ function renderDashTable() {
   if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching from API…', 'The server may take a moment to wake up.')); return; }
   if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
   if (!state.employees.length) {
-    host.append(stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal));
+    host.append(canManageEmployees()
+      ? stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal)
+      : stateBox('empty', 'No employees yet', 'There are no employee records to show.'));
     return;
   }
   const rows = state.employees.map(e => el('tr', null,
@@ -1405,32 +1697,69 @@ function filteredEmployees() {
   });
 }
 
+// Builds the per-row action buttons. Compensation actions are admin-only (UI only;
+// the backend independently enforces authorization on every request).
+function buildActions(e) {
+  const name = textOf(e.name, 'this employee');
+  const group = el('div', { class: 'act-group' });
+  const kind = employeeKind(e);
+  if (isAdmin()) {
+    const incLabel = kind === 'PT' ? 'Increase Hourly Rate' : 'Increase Monthly Salary';
+    group.append(
+      el('button', {
+        class: 'action-btn safe', type: 'button', text: incLabel,
+        'aria-label': incLabel + ' for ' + name,
+        disabled: kind === 'UNK',
+        title: kind === 'UNK' ? 'Employee type is not recognised' : false,
+        onclick: () => openIncrease(e.id)
+      }),
+      el('button', {
+        class: 'action-btn safe', type: 'button', text: 'Add Bonus',
+        'aria-label': 'Add bonus for ' + name, onclick: () => openBonus(e.id)
+      }),
+      el('button', {
+        class: 'action-btn safe', type: 'button', text: 'Compensation History',
+        'aria-label': 'View compensation history for ' + name, onclick: () => openHistory(e.id, 'salary')
+      }));
+  }
+  if (canManageEmployees()) {
+    const del = el('button', { class: 'action-btn danger', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name });
+    del.addEventListener('click', () => deleteEmployee(e.id, name, del));
+    group.append(del);
+  }
+  return group;
+}
+
 function renderEmpTable() {
   const host = $('emp-table-body');
   clear(host);
   if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching employees…')); return; }
   if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
   if (!state.employees.length) {
-    host.append(stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal));
+    host.append(canManageEmployees()
+      ? stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal)
+      : stateBox('empty', 'No employees yet', 'There are no employee records to show.'));
     return;
   }
   const list = filteredEmployees();
   if (!list.length) { host.append(stateBox('empty', 'No employees match your search', 'Try a different name, department or type.')); return; }
 
+  const showActions = canManageEmployees() || isAdmin();
   const rows = list.map(e => {
-    const name = textOf(e.name, 'this employee');
-    const del = el('button', { class: 'action-btn', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name });
-    del.addEventListener('click', () => deleteEmployee(e.id, name, del));
-    return el('tr', null,
+    const cells = [
       el('td', { class: 'id-cell', text: '#' + textOf(e.id) }),
       el('td', { style: 'font-weight:500', text: textOf(e.name) }),
       el('td', { text: textOf(e.department) }),
       el('td', null, badge(e)),
       el('td', { class: 'detail-cell', text: detailText(e) }),
-      el('td', { class: 'salary-cell', text: money(employeeSalary(e)) }),
-      el('td', null, del));
+      el('td', { class: 'salary-cell', text: money(employeeSalary(e)) })
+    ];
+    if (showActions) cells.push(el('td', { class: 'actions-cell' }, buildActions(e)));
+    return el('tr', null, cells);
   });
-  host.append(buildTable(['ID', 'Name', 'Department', 'Type', 'Details', 'Salary', 'Actions'], rows));
+  const headers = ['ID', 'Name', 'Department', 'Type', 'Details', 'Salary'];
+  if (showActions) headers.push('Actions');
+  host.append(buildTable(headers, rows, showActions ? 1000 : 0));
 }
 
 function renderPayslipSelect() {
@@ -1496,7 +1825,7 @@ function renderPayslip() {
     const hours = toNum(emp.hoursWorked), rate = toNum(emp.hourlyRate);
     body.append(el('div', { class: 'payslip-section-title', text: 'Earnings' }),
       payslipRow('Hours worked', intText(hours)),
-      payslipRow('Hourly rate', money(rate)),
+      payslipRow('Hourly rate', hours === null && rate === null ? '—' : money(rate) + ' / hr'),
       el('div', { class: 'payslip-divider' }),
       el('div', { class: 'payslip-row payslip-total' }, el('span', { text: 'Estimated Pay' }),
         el('span', { class: 'amount', text: hours !== null && rate !== null ? money(hours * rate) : '—' })));
@@ -1504,7 +1833,7 @@ function renderPayslip() {
     body.append(el('p', { class: 'payslip-disclaimer', text: 'The employee type is not recognised, so a payslip cannot be estimated.' }));
   }
 
-  body.append(el('p', { class: 'payslip-disclaimer', text: 'Illustrative estimate only. Allowances and deductions use fixed example percentages, are not calculated by the backend, and are not an official payroll record.' }));
+  body.append(el('p', { class: 'payslip-disclaimer', text: 'Illustrative estimate only. Allowances and deductions use fixed example percentages, are not calculated by the backend, and are not an official payroll record. Bonuses are not included.' }));
 
   host.append(el('div', { class: 'payslip-card' },
     el('div', { class: 'payslip-header-bar' },
@@ -1518,10 +1847,14 @@ function renderApiView() {
   const cls = { GET: 'm-get', POST: 'm-post', PUT: 'm-put', DELETE: 'm-delete' };
   const list = $('api-list');
   clear(list);
-  ENDPOINTS.forEach(e => list.append(el('div', { class: 'api-item' },
+  const addItem = e => list.append(el('div', { class: 'api-item' },
     el('span', { class: 'method-badge ' + cls[e.m], text: e.m }),
     el('span', { class: 'api-path', text: e.p }),
-    el('span', { class: 'api-desc', text: e.d }))));
+    el('span', { class: 'api-desc', text: e.d }),
+    e.n ? el('span', { class: 'api-extra', text: e.n }) : false));
+  ENDPOINTS.forEach(addItem);
+  list.append(el('div', { class: 'api-section', text: 'Compensation (salary increments & bonuses)' }));
+  COMP_ENDPOINTS.forEach(addItem);
 }
 
 function renderAll() {
@@ -1545,10 +1878,10 @@ function showView(view) {
   if (view === 'api') renderApiView();
 }
 
-/* ───────────── Modal ───────────── */
+/* ───────────── Add Employee modal ───────────── */
 let lastFocus = null;
 function openModal() {
-  if (!getToken()) return;
+  if (!getToken() || !canManageEmployees()) return;
   lastFocus = document.activeElement;
   $('modal').classList.add('open');
   setTimeout(() => $('f-name').focus(), 0);
@@ -1562,7 +1895,7 @@ function resetModalForm() {
 function closeModal() {
   $('modal').classList.remove('open');
   $('f-error').textContent = '';
-  if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  if (lastFocus && typeof lastFocus.focus === 'function') restoreFocus(lastFocus);
   lastFocus = null;
 }
 function toggleFields() {
@@ -1583,6 +1916,7 @@ function trapFocus(event) {
 /* ───────────── Employee actions ───────────── */
 async function addEmployee() {
   if (state.submitting) return;
+  if (!canManageEmployees()) return;
   const err = $('f-error');
   err.textContent = '';
   const name = $('f-name').value.trim();
@@ -1624,7 +1958,7 @@ async function addEmployee() {
     await loadAll();
   } catch (e) {
     if (!(e instanceof ApiError && e.silent)) {
-      err.textContent = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+      err.textContent = errorText(e, true);
     }
   } finally {
     state.submitting = false;
@@ -1634,6 +1968,7 @@ async function addEmployee() {
 }
 
 async function deleteEmployee(id, name, button) {
+  if (!canManageEmployees()) return;
   if (toNum(id) === null) { showToast('This employee has no valid ID and cannot be removed.', 'error'); return; }
   if (!window.confirm('Remove ' + name + '? This cannot be undone.')) return;
   button.disabled = true;
@@ -1643,10 +1978,321 @@ async function deleteEmployee(id, name, button) {
     await loadAll();
   } catch (e) {
     if (!(e instanceof ApiError && e.silent)) {
-      showToast(e instanceof ApiError ? e.message : 'Could not remove the employee.', 'error');
+      showToast(errorText(e, false), 'error');
     }
     button.disabled = false;
   }
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   COMPENSATION: validation helpers
+   Client-side checks are a convenience only; the backend validates again.
+   ═════════════════════════════════════════════════════════════════════ */
+
+// Validates a money input: required, > 0, at most 2 decimals. Returns { value } or { error }.
+function readMoney(input, label) {
+  const raw = input.value.trim();
+  if (!raw) {
+    return { error: input.validity && input.validity.badInput ? 'Enter ' + label + ' as a plain number.' : 'Enter ' + label + '.' };
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return { error: 'Enter ' + label + ' as a plain number.' };
+  if (n <= 0) return { error: label.charAt(0).toUpperCase() + label.slice(1) + ' must be greater than zero.' };
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return { error: 'Use plain digits with at most two decimal places.' };
+  return { value: n };
+}
+
+// Validates a future-or-today local date. Returns { value } or { error }.
+function readDate(input, label) {
+  const raw = input.value.trim();
+  if (!raw) return { error: 'Choose ' + label + '.' };
+  if (!isValidIsoDate(raw)) return { error: 'Enter a valid date for ' + label + '.' };
+  if (raw < todayLocal()) return { error: label.charAt(0).toUpperCase() + label.slice(1) + ' cannot be in the past.' };
+  return { value: raw };
+}
+
+function readReason(input) {
+  const raw = input.value.trim();
+  if (!raw) return { error: 'A reason is required.' };
+  if (raw.length > REASON_MAX) return { error: 'Reason must be ' + REASON_MAX + ' characters or fewer.' };
+  return { value: raw };
+}
+
+function bindCounter(inputId, counterId) {
+  const input = $(inputId), counter = $(counterId);
+  const update = () => { counter.textContent = input.value.length + '/' + REASON_MAX; };
+  input.addEventListener('input', update);
+  update();
+  return update;
+}
+
+function setBusy(dlg, submitBtn, cancelBtn, busy, idleLabel, busyLabel) {
+  dlg.busy = busy;
+  submitBtn.disabled = busy;
+  cancelBtn.disabled = busy;
+  submitBtn.textContent = busy ? busyLabel : idleLabel;
+}
+
+/* ───────────── Increase salary / hourly rate ───────────── */
+function openIncrease(id) {
+  if (!isAdmin()) return;
+  const emp = findEmployee(id);
+  if (!emp) { showToast('Employee not found. Refresh and try again.', 'error'); return; }
+  const kind = employeeKind(emp);
+  if (kind === 'UNK') { showToast('This employee type is not recognised, so the rate cannot be changed here.', 'error'); return; }
+  const current = toNum(kind === 'FT' ? emp.monthlySalary : emp.hourlyRate);
+  if (current === null) { showToast('The current rate was not returned by the server, so it cannot be changed here.', 'error'); return; }
+  if (incDlg.isOpen()) return;
+
+  const monthly = kind === 'FT';
+  incCtx = { id: String(emp.id), kind, current, monthly, name: textOf(emp.name, 'Unnamed') };
+
+  $('inc-title').textContent = monthly ? 'Increase Monthly Salary' : 'Increase Hourly Rate';
+  $('inc-emp-name').textContent = incCtx.name + ' (#' + incCtx.id + ')';
+  $('inc-emp-type').textContent = monthly ? 'Full-time' : 'Part-time';
+  $('inc-current-label').textContent = monthly ? 'Current monthly salary' : 'Current hourly rate';
+  $('inc-current').textContent = money(current) + (monthly ? ' / month' : ' / hour');
+  $('inc-rate-label').textContent = monthly ? 'New monthly salary (₹)' : 'New hourly rate (₹)';
+  $('inc-rate').value = '';
+  $('inc-date').value = todayLocal();
+  $('inc-date').min = todayLocal();
+  $('inc-reason').value = '';
+  $('inc-count').textContent = '0/' + REASON_MAX;
+  $('inc-error').textContent = '';
+  incDlg.open('inc-rate');
+}
+
+async function submitIncrease(event) {
+  event.preventDefault();
+  if (incDlg.busy || !incCtx) return;               // prevents duplicate submissions
+  const err = $('inc-error');
+  err.textContent = '';
+  if (!isAdmin()) { err.textContent = 'Only administrators can change compensation.'; return; }
+
+  const label = incCtx.monthly ? 'the new monthly salary' : 'the new hourly rate';
+  const rate = readMoney($('inc-rate'), label);
+  if (rate.error) { err.textContent = rate.error; $('inc-rate').focus(); return; }
+  // Compare in whole paise to avoid floating-point surprises.
+  if (Math.round(rate.value * 100) <= Math.round(incCtx.current * 100)) {
+    err.textContent = 'The new rate must be higher than the current rate (' + money(incCtx.current) + ').';
+    $('inc-rate').focus();
+    return;
+  }
+  const date = readDate($('inc-date'), 'the effective date');
+  if (date.error) { err.textContent = date.error; $('inc-date').focus(); return; }
+  const reason = readReason($('inc-reason'));
+  if (reason.error) { err.textContent = reason.error; $('inc-reason').focus(); return; }
+
+  const ctx = incCtx;
+  const idle = 'Save Increase';
+  setBusy(incDlg, $('inc-submit'), $('inc-cancel'), true, idle, 'Saving…');
+  try {
+    // The backend updates the employee and writes the history record in one transaction.
+    await apiRequest(compUrl(ctx.id, '/salary-increments'), {
+      method: 'PUT',
+      body: { newRate: rate.value, effectiveDate: date.value, reason: reason.value }
+    });
+    setBusy(incDlg, $('inc-submit'), $('inc-cancel'), false, idle, 'Saving…');
+    incDlg.close(true);
+    showToast((ctx.monthly ? 'Monthly salary' : 'Hourly rate') + ' increase recorded for ' + ctx.name + '.', 'success');
+    if (hist && hist.id === ctx.id) loadHistory('salary');
+    await loadAll();
+  } catch (e) {
+    setBusy(incDlg, $('inc-submit'), $('inc-cancel'), false, idle, 'Saving…');
+    if (!(e instanceof ApiError && e.silent)) err.textContent = errorText(e, true);   // form values are kept
+  }
+}
+
+/* ───────────── Add bonus ───────────── */
+function openBonus(id) {
+  if (!isAdmin()) return;
+  const emp = findEmployee(id);
+  if (!emp) { showToast('Employee not found. Refresh and try again.', 'error'); return; }
+  if (bonDlg.isOpen()) return;
+  bonCtx = { id: String(emp.id), name: textOf(emp.name, 'Unnamed') };
+  $('bon-emp-name').textContent = bonCtx.name;
+  $('bon-emp-id').textContent = '#' + bonCtx.id;
+  $('bon-amount').value = '';
+  $('bon-date').value = todayLocal();
+  $('bon-date').min = todayLocal();
+  $('bon-reason').value = '';
+  $('bon-count').textContent = '0/' + REASON_MAX;
+  $('bon-error').textContent = '';
+  bonDlg.open('bon-amount');
+}
+
+async function submitBonus(event) {
+  event.preventDefault();
+  if (bonDlg.busy || !bonCtx) return;               // prevents duplicate submissions
+  const err = $('bon-error');
+  err.textContent = '';
+  if (!isAdmin()) { err.textContent = 'Only administrators can add bonuses.'; return; }
+
+  const amount = readMoney($('bon-amount'), 'the bonus amount');
+  if (amount.error) { err.textContent = amount.error; $('bon-amount').focus(); return; }
+  const date = readDate($('bon-date'), 'the bonus date');
+  if (date.error) { err.textContent = date.error; $('bon-date').focus(); return; }
+  const reason = readReason($('bon-reason'));
+  if (reason.error) { err.textContent = reason.error; $('bon-reason').focus(); return; }
+
+  const ctx = bonCtx;
+  const idle = 'Add Bonus';
+  setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), true, idle, 'Adding…');
+  try {
+    // Never auto-retried: a repeated POST after an ambiguous timeout could duplicate the bonus.
+    const data = await apiRequest(compUrl(ctx.id, '/bonuses'), {
+      method: 'POST',
+      body: { amount: amount.value, bonusDate: date.value, reason: reason.value }
+    });
+    setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), false, idle, 'Adding…');
+    bonDlg.close(true);
+    const status = data && typeof data.status === 'string' && data.status ? data.status.toUpperCase() : '';
+    showToast('Bonus recorded for ' + ctx.name + (status ? ' (status: ' + status + ').' : '.'), 'success');
+    openHistory(ctx.id, 'bonus');                   // shows the new bonus with its real backend status
+  } catch (e) {
+    setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), false, idle, 'Adding…');
+    if (!(e instanceof ApiError && e.silent)) err.textContent = errorText(e, true);   // form values are kept
+  }
+}
+
+/* ───────────── Compensation history ───────────── */
+function pick(obj, keys) {
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+  }
+  return null;
+}
+
+// Accepts a plain array, or an object wrapping one; anything else is "unexpected".
+function normalizeList(data) {
+  let list = null;
+  if (Array.isArray(data)) list = data;
+  else if (data && typeof data === 'object') {
+    for (const k of ['content', 'data', 'items', 'records']) {
+      if (Array.isArray(data[k])) { list = data[k]; break; }
+    }
+  }
+  return list ? list.filter(item => item && typeof item === 'object') : null;
+}
+
+function rateText(value, basis) {
+  const n = toNum(value);
+  if (n === null) return '—';
+  const b = String(basis || '').toUpperCase();
+  return money(n) + (b === 'MONTHLY' ? ' / month' : b === 'HOURLY' ? ' / hour' : '');
+}
+
+function basisBadge(basis) {
+  const b = String(basis || '').toUpperCase();
+  if (b === 'MONTHLY') return el('span', { class: 'badge badge-ft', text: 'MONTHLY' });
+  if (b === 'HOURLY') return el('span', { class: 'badge badge-pt', text: 'HOURLY' });
+  return el('span', { class: 'badge badge-unk', text: b || '—' });
+}
+
+// Status is shown as text plus a symbol, so it never relies on colour alone.
+function statusBadge(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'PENDING') return el('span', { class: 'badge badge-pending', text: '◔ PENDING' });
+  if (s === 'PAID') return el('span', { class: 'badge badge-paid', text: '✓ PAID' });
+  if (s === 'CANCELLED') return el('span', { class: 'badge badge-cancelled', text: '✕ CANCELLED' });
+  return el('span', { class: 'badge badge-unk', text: s || 'UNKNOWN' });
+}
+
+function openHistory(id, tab) {
+  if (!isAdmin()) return;
+  const emp = findEmployee(id);
+  if (!emp) { showToast('Employee not found. Refresh and try again.', 'error'); return; }
+  hist = {
+    id: String(emp.id),
+    tab: tab === 'bonus' ? 'bonus' : 'salary',
+    seq: { salary: 0, bonus: 0 },
+    salary: { status: 'loading', rows: [], error: '' },
+    bonus: { status: 'loading', rows: [], error: '' }
+  };
+  $('hist-emp-name').textContent = textOf(emp.name, 'Unnamed');
+  $('hist-emp-meta').textContent = 'ID #' + textOf(emp.id) + ' · ' + textOf(emp.department, 'No department');
+  const badgeHost = $('hist-emp-badge');
+  clear(badgeHost);
+  badgeHost.append(badge(emp));
+  showHistTab(hist.tab);
+  histDlg.open('hist-close');
+  loadHistory('salary');
+  loadHistory('bonus');
+}
+
+function showHistTab(which) {
+  if (!hist) return;
+  hist.tab = which;
+  ['salary', 'bonus'].forEach(name => {
+    const tab = $('hist-tab-' + name);
+    const on = name === which;
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    tab.tabIndex = on ? 0 : -1;
+    $('hist-panel-' + name).hidden = !on;
+  });
+}
+
+async function loadHistory(which) {
+  const h = hist;
+  if (!h) return;
+  const seq = ++h.seq[which];                       // later responses win; stale ones are ignored
+  h[which] = { status: 'loading', rows: [], error: '' };
+  renderHistPanel(which);
+  try {
+    const data = await apiRequest(compUrl(h.id, which === 'salary' ? '/salary-increments' : '/bonuses'));
+    if (hist !== h || h.seq[which] !== seq) return;
+    const rows = normalizeList(data);
+    if (!rows) h[which] = { status: 'error', rows: [], error: 'The server returned an unexpected response.' };
+    else h[which] = { status: rows.length ? 'ready' : 'empty', rows: rows, error: '' };
+  } catch (e) {
+    if (hist !== h || h.seq[which] !== seq) return;
+    if (e instanceof ApiError && e.silent) return;  // session handling already took over
+    h[which] = { status: 'error', rows: [], error: errorText(e, false) };
+  }
+  renderHistPanel(which);
+}
+
+function renderHistPanel(which) {
+  if (!hist) return;
+  const host = $('hist-panel-' + which);
+  clear(host);
+  const part = hist[which];
+  const noun = which === 'salary' ? 'salary or rate changes' : 'bonuses';
+  if (part.status === 'loading') { host.append(stateBox('loading', 'Loading ' + noun + '…')); return; }
+  if (part.status === 'error') {
+    host.append(stateBox('error', 'Could not load ' + noun, part.error, 'Try again', () => loadHistory(which)));
+    return;
+  }
+  if (part.status === 'empty') {
+    host.append(stateBox('empty', 'No ' + noun + ' recorded yet', which === 'salary'
+      ? 'Increases appear here after one is saved for this employee.'
+      : 'Bonuses appear here after one is added for this employee.'));
+    return;
+  }
+
+  let headers, rows;
+  if (which === 'salary') {
+    headers = ['Effective date', 'Previous rate', 'New rate', 'Pay basis', 'Reason', 'Recorded'];
+    rows = part.rows.map(r => {
+      const basis = pick(r, ['payBasis', 'pay_basis', 'basis']);
+      return el('tr', null,
+        el('td', { class: 'nowrap', text: formatDate(pick(r, ['effectiveDate', 'effective_date'])) }),
+        el('td', { class: 'salary-cell', text: rateText(pick(r, ['previousRate', 'oldRate', 'previous_rate']), basis) }),
+        el('td', { class: 'salary-cell', text: rateText(pick(r, ['newRate', 'new_rate']), basis) }),
+        el('td', null, basisBadge(basis)),
+        el('td', { class: 'reason-cell', text: textOf(pick(r, ['reason'])) }),
+        el('td', { class: 'detail-cell', text: formatTimestamp(pick(r, ['createdAt', 'created_at', 'recordedAt'])) }));
+    });
+  } else {
+    headers = ['Bonus date', 'Amount', 'Reason', 'Status', 'Recorded'];
+    rows = part.rows.map(r => el('tr', null,
+      el('td', { class: 'nowrap', text: formatDate(pick(r, ['bonusDate', 'bonus_date'])) }),
+      el('td', { class: 'salary-cell', text: money(pick(r, ['amount'])) }),
+      el('td', { class: 'reason-cell', text: textOf(pick(r, ['reason'])) }),
+      el('td', null, statusBadge(pick(r, ['status']))),
+      el('td', { class: 'detail-cell', text: formatTimestamp(pick(r, ['createdAt', 'created_at', 'recordedAt'])) })));
+  }
+  host.append(buildTable(headers, rows, 640));
 }
 
 /* ───────────── Initialization ───────────── */
@@ -1657,15 +2303,17 @@ function initApp() {
   }
   hideAuthScreen();
   $('logout-btn').hidden = false;
-  $('open-modal').hidden = false;
-  const username = getUsername();
-  $('user-chip').hidden = !username;
-  $('user-chip').textContent = username ? 'Signed in as ' + username : '';
+  $('open-modal').hidden = !canManageEmployees();
+  renderUserChip();
   if ($('conn').dataset.state === 'auth') setConnection('ok', 'Backend connected');
   loadAll();
 }
 
 function bindEvents() {
+  incDlg = createDialog('inc-modal', () => { incCtx = null; });
+  bonDlg = createDialog('bon-modal', () => { bonCtx = null; });
+  histDlg = createDialog('hist-modal', () => { hist = null; });
+
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.view)));
   $('open-modal').addEventListener('click', openModal);
   $('modal-cancel').addEventListener('click', closeModal);
@@ -1684,6 +2332,26 @@ function bindEvents() {
   $('logout-btn').addEventListener('click', logout);
   $('conn-retry').addEventListener('click', onConnRetry);
   $('startup-retry').addEventListener('click', () => Readiness.start());
+
+  // Compensation dialogs
+  $('inc-form').addEventListener('submit', submitIncrease);
+  $('inc-cancel').addEventListener('click', () => incDlg.close());
+  bindCounter('inc-reason', 'inc-count');
+  $('bon-form').addEventListener('submit', submitBonus);
+  $('bon-cancel').addEventListener('click', () => bonDlg.close());
+  bindCounter('bon-reason', 'bon-count');
+  $('hist-close').addEventListener('click', () => histDlg.close());
+  const tabNames = ['salary', 'bonus'];
+  tabNames.forEach((name, i) => {
+    $('hist-tab-' + name).addEventListener('click', () => showHistTab(name));
+    $('hist-tab-' + name).addEventListener('keydown', event => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const next = tabNames[(i + 1) % tabNames.length];
+      showHistTab(next);
+      $('hist-tab-' + next).focus();
+    });
+  });
 }
 
 // Startup: bind listeners once, lock the UI behind the startup screen, then begin
