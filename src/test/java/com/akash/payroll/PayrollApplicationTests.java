@@ -33,13 +33,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WithMockUser(username = "admin", roles = "ADMIN")
 class PayrollApplicationTests {
 
-    @Autowired MockMvc         mockMvc;
-    @Autowired ObjectMapper    mapper;
-    @Autowired EmployeeRepository repo;
-    @Autowired UserRepository userRepository;
-    @Autowired PasswordEncoder passwordEncoder;
-    @Autowired TestRestTemplate testRestTemplate;
-    @LocalServerPort int port;
+    @Autowired
+    MockMvc mockMvc;
+
+    @Autowired
+    ObjectMapper mapper;
+
+    @Autowired
+    EmployeeRepository repo;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
+    @Autowired
+    TestRestTemplate testRestTemplate;
+
+    @LocalServerPort
+    int port;
 
     @BeforeEach
     void cleanUp() {
@@ -51,7 +64,9 @@ class PayrollApplicationTests {
     void shouldRegisterAndLoginWithHashedPassword() throws Exception {
         Map<String, String> request = Map.of(
                 "username", "payroll-test-user",
-                "password", "test-password-123");
+                "password", "test-password-123"
+        );
+
         String requestJson = mapper.writeValueAsString(request);
 
         mockMvc.perform(post("/api/auth/register")
@@ -61,8 +76,12 @@ class PayrollApplicationTests {
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.username").value("payroll-test-user"));
 
-        var savedUser = userRepository.findByUsername("payroll-test-user").orElseThrow();
-        assertTrue(passwordEncoder.matches("test-password-123", savedUser.getPassword()));
+        var savedUser = userRepository.findByUsername("payroll-test-user")
+                .orElseThrow();
+
+        assertTrue(passwordEncoder.matches(
+                "test-password-123", savedUser.getPassword()));
+
         assertNotEquals("test-password-123", savedUser.getPassword());
 
         mockMvc.perform(post("/api/auth/login")
@@ -75,20 +94,25 @@ class PayrollApplicationTests {
     @Test
     void shouldStartEmbeddedServerAndProtectApi() {
         var response = testRestTemplate.getForEntity(
-                "http://localhost:" + port + "/api/employees", String.class);
+                "http://localhost:" + port + "/api/employees",
+                String.class
+        );
+
         assertEquals(401, response.getStatusCode().value());
     }
 
     @Test
     @WithAnonymousUser
     void shouldRejectInvalidJwtForProtectedEmployeeApi() throws Exception {
-        mockMvc.perform(get("/api/employees").header("Authorization", "Bearer invalid-token"))
+        mockMvc.perform(get("/api/employees")
+                        .header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isUnauthorized());
     }
 
-    // ── POST Tests ────────────────────────────────────────────────────────────
+    // ── POST Tests ───────────────────────────────────────────────────────────
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void shouldAddFullTimeEmployee() throws Exception {
         FullTimeEmployeeRequest req = new FullTimeEmployeeRequest();
         req.setName("Abhishek Kumar");
@@ -104,7 +128,8 @@ class PayrollApplicationTests {
                 .andExpect(jsonPath("$.salary").value(75000.0));
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void shouldAddPartTimeEmployee() throws Exception {
         PartTimeEmployeeRequest req = new PartTimeEmployeeRequest();
         req.setName("Rahul Sharma");
@@ -117,13 +142,14 @@ class PayrollApplicationTests {
                         .content(mapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.employeeType").value("PART_TIME"))
-                .andExpect(jsonPath("$.salary").value(20000.0));  // 40 × 500
+                .andExpect(jsonPath("$.salary").value(20000.0));
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void shouldReturn400WhenNameBlank() throws Exception {
         FullTimeEmployeeRequest req = new FullTimeEmployeeRequest();
-        req.setName("");   // invalid
+        req.setName("");
         req.setDepartment("Engineering");
         req.setMonthlySalary(50000.0);
 
@@ -131,7 +157,8 @@ class PayrollApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.name").value("Name is required"));
+                .andExpect(jsonPath("$.errors.name")
+                        .value("Name is required"));
     }
 
     @Test
@@ -140,6 +167,7 @@ class PayrollApplicationTests {
         fullTime.setName("Searchable Employee");
         fullTime.setDepartment("Engineering");
         fullTime.setMonthlySalary(75000.0);
+
         mockMvc.perform(post("/api/employees/fulltime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(fullTime)));
@@ -149,6 +177,7 @@ class PayrollApplicationTests {
         partTime.setDepartment("Support");
         partTime.setHoursWorked(40);
         partTime.setHourlyRate(500.0);
+
         mockMvc.perform(post("/api/employees/parttime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(partTime)));
@@ -157,6 +186,7 @@ class PayrollApplicationTests {
         priya.setName("Priya Gupta");
         priya.setDepartment("HR");
         priya.setMonthlySalary(65000.0);
+
         mockMvc.perform(post("/api/employees/fulltime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(priya)));
@@ -165,6 +195,7 @@ class PayrollApplicationTests {
         sneha.setName("Sneha Patel");
         sneha.setDepartment("Engineering");
         sneha.setMonthlySalary(80000.0);
+
         mockMvc.perform(post("/api/employees/fulltime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(sneha)));
@@ -174,14 +205,17 @@ class PayrollApplicationTests {
         ananya.setDepartment("Support");
         ananya.setHoursWorked(60);
         ananya.setHourlyRate(350.0);
+
         mockMvc.perform(post("/api/employees/parttime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(ananya)));
 
-        mockMvc.perform(get("/api/employees/search").param("name", "searchable"))
+        mockMvc.perform(get("/api/employees/search")
+                        .param("name", "searchable"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Searchable Employee"));
+                .andExpect(jsonPath("$[0].name")
+                        .value("Searchable Employee"));
 
         mockMvc.perform(get("/api/employees/summary"))
                 .andExpect(status().isOk())
@@ -191,59 +225,94 @@ class PayrollApplicationTests {
                 .andExpect(jsonPath("$.totalPayroll").value(261000.0));
     }
 
+    // ── UPDATE Tests ─────────────────────────────────────────────────────────
+
     @Test
-    void shouldUpdateEmployeeAndRejectWrongEmployeeType() throws Exception {
+    void shouldUpdateEmployeeDetailsAndRejectUntrackedSalaryChange()
+            throws Exception {
+
         FullTimeEmployeeRequest fullTime = new FullTimeEmployeeRequest();
         fullTime.setName("Before Update");
         fullTime.setDepartment("Engineering");
         fullTime.setMonthlySalary(60000.0);
+
         String created = mockMvc.perform(post("/api/employees/fulltime")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(fullTime)))
                 .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
         long id = mapper.readTree(created).get("id").asLong();
 
+        // Updating ordinary employee details without changing salary is allowed.
         fullTime.setName("After Update");
-        fullTime.setMonthlySalary(70000.0);
+        fullTime.setDepartment("Finance");
+        fullTime.setMonthlySalary(60000.0);
+
         mockMvc.perform(put("/api/employees/" + id + "/fulltime")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(fullTime)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("After Update"))
-                .andExpect(jsonPath("$.salary").value(70000.0));
+                .andExpect(jsonPath("$.department").value("Finance"))
+                .andExpect(jsonPath("$.salary").value(60000.0));
+
+        // Salary changes must use the dedicated salary-increments endpoint.
+        fullTime.setMonthlySalary(70000.0);
+
+        mockMvc.perform(put("/api/employees/" + id + "/fulltime")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(fullTime)))
+                .andExpect(status().isBadRequest());
+
+        // Verify the rejected update did not change the stored salary.
+        mockMvc.perform(get("/api/employees/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.salary").value(60000.0));
 
         PartTimeEmployeeRequest partTime = new PartTimeEmployeeRequest();
         partTime.setName("Part Time Employee");
         partTime.setDepartment("Support");
         partTime.setHoursWorked(20);
         partTime.setHourlyRate(250.0);
-        String partTimeCreated = mockMvc.perform(post("/api/employees/parttime")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(partTime)))
+
+        String partTimeCreated = mockMvc.perform(
+                        post("/api/employees/parttime")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsString(partTime)))
                 .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
         long partTimeId = mapper.readTree(partTimeCreated).get("id").asLong();
 
+        // A part-time employee cannot be updated through the full-time route.
         mockMvc.perform(put("/api/employees/" + partTimeId + "/fulltime")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(fullTime)))
                 .andExpect(status().isBadRequest());
     }
 
-    // ── GET Tests ─────────────────────────────────────────────────────────────
+    // ── GET Tests ────────────────────────────────────────────────────────────
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void shouldReturn404ForNonExistentEmployee() throws Exception {
         mockMvc.perform(get("/api/employees/999"))
                 .andExpect(status().isNotFound());
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void shouldGetAllEmployees() throws Exception {
-        // Seed
         FullTimeEmployeeRequest req = new FullTimeEmployeeRequest();
-        req.setName("Test User"); req.setDepartment("IT"); req.setMonthlySalary(60000.0);
+        req.setName("Test User");
+        req.setDepartment("IT");
+        req.setMonthlySalary(60000.0);
+
         mockMvc.perform(post("/api/employees/fulltime")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(req)));
@@ -253,17 +322,22 @@ class PayrollApplicationTests {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    // ── DELETE Tests ──────────────────────────────────────────────────────────
+    // ── DELETE Tests ─────────────────────────────────────────────────────────
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void shouldDeleteEmployee() throws Exception {
         FullTimeEmployeeRequest req = new FullTimeEmployeeRequest();
-        req.setName("Delete Me"); req.setDepartment("HR"); req.setMonthlySalary(40000.0);
+        req.setName("Delete Me");
+        req.setDepartment("HR");
+        req.setMonthlySalary(40000.0);
 
         String body = mockMvc.perform(post("/api/employees/fulltime")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(req)))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         Long id = mapper.readTree(body).get("id").asLong();
 
