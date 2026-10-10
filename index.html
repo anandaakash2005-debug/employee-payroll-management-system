@@ -1,42 +1,56 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PayrollPro â€” Employee Management</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayrollPro — Employee Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg:        #0a0a0f;
       --surface:   #111118;
       --card:      #16161f;
       --border:    rgba(255,255,255,0.07);
-      --border2:   rgba(255,255,255,0.13);
+      --border2:   rgba(255,255,255,0.15);
       --accent:    #6c63ff;
       --accent2:   #a78bfa;
       --teal:      #2dd4bf;
       --coral:     #f87171;
       --amber:     #fbbf24;
       --text:      #f0f0f5;
-      --muted:     #8888aa;
-      --dim:       #444466;
-      --ft-bg:     rgba(108,99,255,0.12);
-      --ft-color:  #a78bfa;
+      --muted:     #a0a0bd;
+      --dim:       #7a7a9c;
+      --ft-bg:     rgba(108,99,255,0.14);
+      --ft-color:  #b9a7fb;
       --pt-bg:     rgba(45,212,191,0.12);
       --pt-color:  #2dd4bf;
+      --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      --display: 'Syne', 'DM Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      font-family: 'DM Sans', sans-serif;
+      font-family: var(--sans);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       display: flex;
+      line-height: 1.45;
+    }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+    button, input, select { font: inherit; color: inherit; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
     }
 
-    /* â”€â”€ Sidebar â”€â”€ */
+    /* ── Sidebar ── */
     .sidebar {
-      width: 220px;
+      width: 230px;
       background: var(--surface);
       border-right: 1px solid var(--border);
       display: flex;
@@ -45,910 +59,1249 @@
       top: 0; left: 0; bottom: 0;
       z-index: 10;
     }
-    .logo {
-      padding: 24px 20px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .logo-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.5px;
-    }
+    .logo { padding: 24px 20px 18px; border-bottom: 1px solid var(--border); }
+    .logo-title { font-family: var(--display); font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
     .logo-title span { color: var(--accent2); }
-    .logo-sub {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 3px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
+    .conn {
+      margin-top: 8px;
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; color: var(--muted);
     }
-    .dot-live {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--teal);
-      animation: pulse 2s infinite;
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex: none; }
+    .conn[data-state="ok"] .conn-dot { background: var(--teal); }
+    .conn[data-state="down"] .conn-dot { background: var(--coral); }
+    .conn[data-state="auth"] .conn-dot { background: var(--accent2); }
+    .conn[data-state="checking"] .conn-dot { animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
+    .conn-retry {
+      background: none; border: 0; color: var(--accent2); cursor: pointer;
+      font-size: 11px; text-decoration: underline; padding: 2px;
     }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     .nav { padding: 12px 10px; flex: 1; }
     .nav-label {
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--dim);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 8px 10px 4px;
+      font-size: 10px; font-weight: 500; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 10px 4px;
     }
     .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13px;
-      color: var(--muted);
-      transition: all 0.15s;
-      margin-bottom: 2px;
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 13px; color: var(--muted);
+      background: none; border: 0; text-align: left;
+      transition: background 0.15s, color 0.15s; margin-bottom: 2px;
     }
     .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-    .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent2); }
-    .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+    .nav-item[aria-current="page"] { background: rgba(108,99,255,0.18); color: var(--accent2); }
+    .nav-icon { width: 18px; height: 18px; flex: none; }
 
-    /* â”€â”€ Main â”€â”€ */
-    .main {
-      margin-left: 220px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
+    /* ── Main ── */
+    .main { margin-left: 230px; flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
     .topbar {
-      padding: 16px 28px;
+      padding: 14px 28px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
       background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 5;
+      position: sticky; top: 0; z-index: 5;
     }
-    .page-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 16px;
-      font-weight: 700;
-    }
+    .page-title { font-family: var(--display); font-size: 16px; font-weight: 700; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .user-chip { font-size: 12px; color: var(--muted); }
     .btn {
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-family: 'DM Sans', sans-serif;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s;
-      font-weight: 500;
+      padding: 9px 18px; border-radius: 8px; font-size: 13px; cursor: pointer;
+      border: 1px solid transparent; transition: background 0.15s, transform 0.15s; font-weight: 500;
+      min-height: 38px;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: #5a52e0; transform: translateY(-1px); }
-    .btn-ghost {
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--border2);
-    }
-    .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
-    .btn-danger { background: rgba(248,113,113,0.15); color: var(--coral); border: 1px solid rgba(248,113,113,0.2); }
-    .btn-danger:hover { background: rgba(248,113,113,0.25); }
-
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #5a52e0; }
+    .btn-ghost { background: transparent; color: var(--muted); border-color: var(--border2); }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); background: rgba(255,255,255,0.05); }
     .content { padding: 24px 28px; flex: 1; }
 
-    /* â”€â”€ Metric cards â”€â”€ */
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-    .metric {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px 20px;
-      transition: border-color 0.2s;
-    }
-    .metric:hover { border-color: var(--border2); }
+    /* ── Metrics ── */
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .metric { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; min-width: 0; }
     .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
-    .metric-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; color: var(--text); }
+    .metric-value { font-family: var(--display); font-size: 26px; font-weight: 700; overflow-wrap: anywhere; }
+    .metric-value.small { font-size: 20px; }
     .metric-sub { font-size: 11px; color: var(--dim); margin-top: 4px; }
     .metric-accent { border-top: 2px solid var(--accent); }
     .metric-teal { border-top: 2px solid var(--teal); }
     .metric-amber { border-top: 2px solid var(--amber); }
     .metric-coral { border-top: 2px solid var(--coral); }
 
-    /* â”€â”€ Table â”€â”€ */
-    .table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 24px;
-    }
-    .table-header {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .table-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; }
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .search-input {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 6px 12px;
-      font-size: 12px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      width: 200px;
-      outline: none;
-    }
-    .search-input:focus { border-color: var(--accent); }
-    .search-input::placeholder { color: var(--dim); }
-    .filter-select {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 12px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      outline: none;
-      cursor: pointer;
-    }
-    table { width: 100%; border-collapse: collapse; }
+    /* ── Tables ── */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+    .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .table-title { font-family: var(--display); font-size: 13px; font-weight: 600; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; }
     th {
-      padding: 10px 20px;
-      text-align: left;
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      background: rgba(255,255,255,0.02);
-      border-bottom: 1px solid var(--border);
+      padding: 10px 20px; text-align: left; font-size: 11px; font-weight: 500; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
     }
-    td {
-      padding: 13px 20px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--border);
-      color: var(--text);
-    }
+    td { padding: 13px 20px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-    .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 500;
-    }
+    tbody tr:hover td { background: rgba(255,255,255,0.025); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
     .badge-ft { background: var(--ft-bg); color: var(--ft-color); }
     .badge-pt { background: var(--pt-bg); color: var(--pt-color); }
-    .salary-cell { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; }
+    .badge-unk { background: rgba(255,255,255,0.08); color: var(--muted); }
+    .salary-cell { font-family: var(--display); font-size: 13px; font-weight: 600; white-space: nowrap; }
     .id-cell { color: var(--dim); font-size: 12px; }
-    .action-btns { display: flex; gap: 6px; }
+    .detail-cell { color: var(--muted); font-size: 12px; white-space: nowrap; }
     .action-btn {
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      cursor: pointer;
-      border: 1px solid var(--border2);
-      background: transparent;
-      color: var(--muted);
-      font-family: 'DM Sans', sans-serif;
-      transition: all 0.15s;
+      padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      border: 1px solid var(--border2); background: transparent; color: var(--muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .action-btn:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.05); }
-    .action-btn.del:hover { color: var(--coral); border-color: rgba(248,113,113,0.3); }
+    .action-btn:hover:not(:disabled) { color: var(--coral); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
 
-    /* â”€â”€ Modal â”€â”€ */
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-input, .filter-select, .form-input, .form-select {
+      background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+      padding: 9px 12px; font-size: 13px; color: var(--text); outline: none; min-height: 40px;
+    }
+    .search-input { width: 280px; max-width: 100%; }
+    .search-input:focus, .filter-select:focus, .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .search-input::placeholder, .form-input::placeholder { color: var(--dim); }
+    .filter-select option, .form-select option { background: var(--surface); color: var(--text); }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Endpoints ── */
+    .base-url { margin-bottom: 16px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    .base-url code { background: var(--card); padding: 3px 8px; border-radius: 5px; color: var(--accent2); }
+    .api-note { font-size: 12px; color: var(--dim); margin-bottom: 14px; }
+    .api-list { display: flex; flex-direction: column; gap: 4px; }
+    .api-item {
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-size: 12px;
+    }
+    .method-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; font-family: var(--display); min-width: 56px; text-align: center; }
+    .m-get { background: rgba(45,212,191,0.15); color: var(--teal); }
+    .m-post { background: rgba(108,99,255,0.18); color: var(--accent2); }
+    .m-put { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .m-delete { background: rgba(248,113,113,0.15); color: var(--coral); }
+    .api-path { font-family: ui-monospace, Consolas, monospace; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .api-desc { margin-left: auto; color: var(--dim); font-size: 11px; }
+
+    /* ── Payslip ── */
+    .payslip-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; max-width: 520px; overflow: hidden; }
+    .payslip-header-bar { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 20px 24px; border-bottom: 1px solid var(--border); }
+    .payslip-company { font-family: var(--display); font-size: 15px; font-weight: 700; }
+    .payslip-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .payslip-body { padding: 20px 24px; }
+    .payslip-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 5px 0; }
+    .payslip-row .label { color: var(--muted); }
+    .payslip-section-title { font-size: 10px; font-weight: 500; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px; }
+    .payslip-divider { height: 1px; background: var(--border); margin: 10px 0; }
+    .payslip-total { font-family: var(--display); font-weight: 700; font-size: 15px; }
+    .payslip-total .amount { color: var(--teal); }
+    .deduction { color: var(--coral); }
+    .payslip-disclaimer { margin-top: 14px; font-size: 11px; color: var(--dim); }
+    .emp-select-wrap { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .emp-select-wrap label { font-size: 12px; color: var(--muted); }
+
+    /* ── State boxes ── */
+    .state-box { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+    .state-box .state-title { color: var(--text); font-weight: 500; margin-bottom: 4px; }
+    .state-box.error .state-title { color: var(--coral); }
+    .state-box .btn { margin-top: 14px; }
+    .spinner {
+      width: 24px; height: 24px; border: 2px solid var(--border2); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .inline-note { font-size: 12px; color: var(--amber); padding: 10px 20px; border-bottom: 1px solid var(--border); }
+
+    /* ── Bar chart ── */
+    .bar-chart { padding: 16px 20px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar-name { font-size: 12px; color: var(--muted); width: 110px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { flex: 1; background: var(--surface); border-radius: 4px; height: 10px; overflow: hidden; min-width: 40px; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .bar-val { font-size: 12px; color: var(--muted); width: 100px; flex: none; text-align: right; font-family: ui-monospace, Consolas, monospace; }
+    .legend { display: flex; gap: 16px; padding: 0 20px 14px; font-size: 11px; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+    /* ── Modal ── */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; padding: 16px;
     }
     .modal-overlay.open { display: flex; }
     .modal {
-      background: var(--card);
-      border: 1px solid var(--border2);
-      border-radius: 16px;
-      padding: 28px;
-      width: 420px;
+      background: var(--card); border: 1px solid var(--border2); border-radius: 16px; padding: 28px;
+      width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow-y: auto;
       animation: slideUp 0.2s ease;
     }
-    @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-    .modal-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 20px;
-    }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    .modal-title { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 20px; }
     .form-group { margin-bottom: 14px; }
     .form-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
-    .form-input, .form-select {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 9px 12px;
-      font-size: 13px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .form-input:focus, .form-select:focus { border-color: var(--accent); }
-    .form-input::placeholder { color: var(--dim); }
+    .form-input, .form-select { width: 100%; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-    .error-msg { font-size: 11px; color: var(--coral); margin-top: 8px; min-height: 14px; }
+    .error-msg { font-size: 12px; color: var(--coral); margin-top: 8px; min-height: 16px; }
 
-    /* â”€â”€ Toast â”€â”€ */
+    /* ── Toast ── */
     .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--card);
-      border: 1px solid var(--border2);
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 13px;
-      color: var(--text);
-      z-index: 200;
-      transform: translateY(100px);
-      opacity: 0;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      position: fixed; bottom: 24px; right: 24px; max-width: calc(100vw - 48px);
+      background: var(--card); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px;
+      font-size: 13px; z-index: 300; transform: translateY(100px); opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none;
     }
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.success { border-left: 3px solid var(--teal); }
     .toast.error { border-left: 3px solid var(--coral); }
 
-    /* â”€â”€ Views â”€â”€ */
-    .view { display: none; }
-    .view.active { display: block; }
+    /* ── Auth screen ── */
+    .auth-screen {
+      position: fixed; inset: 0; z-index: 200; background: var(--bg);
+      display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
+    }
+    .auth-form { width: 100%; max-width: 390px; background: var(--card); border: 1px solid var(--border2); padding: 28px; border-radius: 16px; }
+    .auth-form h1 { font-family: var(--display); font-size: 22px; margin-bottom: 6px; }
+    .auth-form h1 span { color: var(--accent2); }
+    .auth-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+    .auth-form .form-input { margin-bottom: 14px; }
+    .auth-error { color: var(--coral); font-size: 13px; min-height: 18px; margin-bottom: 10px; }
+    .auth-form .btn-primary { width: 100%; padding: 12px; }
+    .auth-toggle { width: 100%; margin-top: 10px; padding: 10px; background: transparent; color: #c4b5fd; border: 0; cursor: pointer; font-size: 13px; }
+    .auth-hint { font-size: 11px; color: var(--dim); margin-top: 12px; text-align: center; }
 
-    /* â”€â”€ API View â”€â”€ */
-    .api-list { display: flex; flex-direction: column; gap: 2px; }
-    .api-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 16px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 12px;
+    /* ── Responsive ── */
+    @media (max-width: 1000px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
     }
-    .method-badge {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 5px;
-      font-family: 'Syne', sans-serif;
-      min-width: 52px;
-      text-align: center;
+    @media (max-width: 860px) {
+      body { flex-direction: column; }
+      .sidebar { position: static; width: 100%; flex-direction: column; border-right: 0; border-bottom: 1px solid var(--border); }
+      .logo { padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-bottom: 0; }
+      .conn { margin-top: 0; }
+      .nav { padding: 0 10px 10px; display: flex; gap: 4px; overflow-x: auto; }
+      .nav-label { display: none; }
+      .nav-item { width: auto; white-space: nowrap; margin-bottom: 0; }
+      .main { margin-left: 0; min-height: 0; }
+      .topbar { padding: 12px 16px; position: static; }
+      .content { padding: 16px; }
     }
-    .m-get { background: rgba(45,212,191,0.15); color: var(--teal); }
-    .m-post { background: rgba(108,99,255,0.15); color: var(--accent2); }
-    .m-put { background: rgba(251,191,36,0.15); color: var(--amber); }
-    .m-delete { background: rgba(248,113,113,0.15); color: var(--coral); }
-    .api-path { font-family: monospace; color: var(--muted); font-size: 12px; }
-    .api-desc { margin-left: auto; color: var(--dim); font-size: 11px; }
-
-    /* â”€â”€ Payslip â”€â”€ */
-    .payslip-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      max-width: 500px;
-      overflow: hidden;
+    @media (max-width: 520px) {
+      .metrics { grid-template-columns: 1fr; }
+      .metric-value { font-size: 22px; }
+      .bar-name { width: 70px; }
+      .bar-val { width: 80px; font-size: 11px; }
+      td, th { padding: 11px 14px; }
+      .modal { padding: 20px; }
+      .toast { left: 16px; right: 16px; bottom: 16px; max-width: none; }
     }
-    .payslip-header-bar {
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
-    .payslip-company { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
-    .payslip-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .payslip-body { padding: 20px 24px; }
-    .payslip-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      padding: 5px 0;
-    }
-    .payslip-row .label { color: var(--muted); }
-    .payslip-section-title {
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--dim);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin: 14px 0 6px;
-    }
-    .payslip-divider { height: 1px; background: var(--border); margin: 10px 0; }
-    .payslip-total { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
-    .payslip-total .amount { color: var(--teal); }
-    .deduction { color: var(--coral) !important; }
-    .emp-select-wrap { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
-    .emp-select-wrap label { font-size: 12px; color: var(--muted); }
-
-    /* â”€â”€ Loading â”€â”€ */
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .spinner {
-      width: 24px; height: 24px;
-      border: 2px solid var(--border2);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 10px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* â”€â”€ Bar chart â”€â”€ */
-    .bar-chart { margin-top: 16px; }
-    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .bar-name { font-size: 11px; color: var(--muted); width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bar-track { flex: 1; background: var(--surface); border-radius: 4px; height: 8px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-    .bar-val { font-size: 11px; color: var(--muted); width: 80px; text-align: right; font-family: monospace; }
-
-    .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
   </style>
 </head>
 <body>
 
+<!-- Login / registration screen -->
+<div class="auth-screen" id="auth-screen" hidden>
+  <form class="auth-form" id="auth-form" novalidate>
+    <h1>Payroll<span>Pro</span></h1>
+    <p class="auth-sub" id="auth-subtitle">Sign in to your payroll dashboard</p>
+    <label class="form-label" for="auth-username">Username</label>
+    <input class="form-input" id="auth-username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="100" />
+    <label class="form-label" for="auth-password">Password</label>
+    <input class="form-input" id="auth-password" type="password" autocomplete="current-password" maxlength="200" />
+    <p class="auth-error" id="auth-error" role="alert" aria-live="assertive"></p>
+    <button class="btn btn-primary" id="auth-submit" type="submit">Sign in</button>
+    <button class="auth-toggle" id="auth-toggle" type="button">Create an account</button>
+    <p class="auth-hint">The backend may take up to a minute to wake up on first use.</p>
+  </form>
+</div>
+
 <!-- Sidebar -->
-<div class="sidebar">
+<aside class="sidebar">
   <div class="logo">
     <div class="logo-title">Payroll<span>Pro</span></div>
-    <div class="logo-sub"><span class="dot-live"></span> API on :8080</div>
+    <div class="conn" id="conn" data-state="checking" role="status" aria-live="polite">
+      <span class="conn-dot" aria-hidden="true"></span>
+      <span id="conn-text">Checking connection…</span>
+      <button class="conn-retry" id="conn-retry" type="button" hidden>Retry</button>
+    </div>
   </div>
-  <nav class="nav">
+  <nav class="nav" aria-label="Main navigation">
     <div class="nav-label">Main</div>
-    <div class="nav-item active" onclick="showView('dashboard')">
-      <span class="nav-icon">â–¦</span> Dashboard
-    </div>
-    <div class="nav-item" onclick="showView('employees')">
-      <span class="nav-icon">â—Ž</span> Employees
-    </div>
-    <div class="nav-item" onclick="showView('api')">
-      <span class="nav-icon">âŒ¥</span> REST Endpoints
-    </div>
-    <div class="nav-item" onclick="showView('payslip')">
-      <span class="nav-icon">â–¤</span> Payslip
-    </div>
+    <button class="nav-item" type="button" data-view="dashboard" aria-current="page">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" type="button" data-view="employees">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3c2.2.7 3.5 2.6 3.5 5.7"/></svg>
+      <span>Employees</span>
+    </button>
+    <button class="nav-item" type="button" data-view="api">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>
+      <span>REST Endpoints</span>
+    </button>
+    <button class="nav-item" type="button" data-view="payslip">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+      <span>Payslip</span>
+    </button>
   </nav>
-</div>
+</aside>
 
 <!-- Main -->
 <div class="main">
-  <div class="topbar">
-    <span class="page-title" id="page-title">Dashboard</span>
-    <button class="btn btn-primary" onclick="openModal()">+ Add Employee</button>
-  </div>
+  <header class="topbar">
+    <h2 class="page-title" id="page-title">Dashboard</h2>
+    <div class="topbar-actions">
+      <span class="user-chip" id="user-chip" hidden></span>
+      <button class="btn btn-primary" id="open-modal" type="button">+ Add Employee</button>
+      <button class="btn btn-ghost" id="logout-btn" type="button" hidden>Sign Out</button>
+    </div>
+  </header>
 
-  <div class="content">
+  <main class="content">
 
     <!-- Dashboard -->
-    <div class="view active" id="view-dashboard">
-      <div class="metrics" id="metrics-grid">
+    <section class="view active" id="view-dashboard" aria-label="Dashboard">
+      <div class="metrics">
         <div class="metric metric-accent">
           <div class="metric-label">Total Employees</div>
-          <div class="metric-value" id="m-total">â€”</div>
+          <div class="metric-value" id="m-total">—</div>
           <div class="metric-sub">Active staff</div>
         </div>
         <div class="metric metric-teal">
           <div class="metric-label">Full-time</div>
-          <div class="metric-value" id="m-ft">â€”</div>
+          <div class="metric-value" id="m-ft">—</div>
           <div class="metric-sub">Fixed salary</div>
         </div>
         <div class="metric metric-amber">
           <div class="metric-label">Part-time</div>
-          <div class="metric-value" id="m-pt">â€”</div>
+          <div class="metric-value" id="m-pt">—</div>
           <div class="metric-sub">Hourly rate</div>
         </div>
         <div class="metric metric-coral">
           <div class="metric-label">Total Payroll</div>
-          <div class="metric-value" id="m-payroll" style="font-size:18px">â€”</div>
-          <div class="metric-sub" id="m-avg">Avg â€”</div>
+          <div class="metric-value small" id="m-payroll">—</div>
+          <div class="metric-sub" id="m-avg">Average —</div>
         </div>
       </div>
 
       <div class="table-wrap">
-        <div class="table-header">
-          <span class="table-title">All Employees</span>
-        </div>
-        <div id="dash-table-body"><div class="loading"><div class="spinner"></div>Fetching from API...</div></div>
+        <div class="table-header"><h3 class="table-title">All Employees</h3></div>
+        <div id="dash-table-body"></div>
       </div>
 
       <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Salary Distribution</span></div>
-        <div style="padding:16px 20px" id="bar-chart-wrap">
-          <div class="loading"><div class="spinner"></div>Loading...</div>
-        </div>
+        <div class="table-header"><h3 class="table-title">Salary Distribution</h3></div>
+        <div id="bar-chart-wrap"></div>
       </div>
-    </div>
+    </section>
 
     <!-- Employees -->
-    <div class="view" id="view-employees">
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <input class="search-input" placeholder="Search by name or department..." id="search-input" oninput="filterTable()" style="width:260px"/>
-        <select class="filter-select" id="filter-type" onchange="filterTable()">
+    <section class="view" id="view-employees" aria-label="Employees">
+      <div class="toolbar">
+        <label class="sr-only" for="search-input">Search employees</label>
+        <input class="search-input" id="search-input" type="search" placeholder="Search by name or department…" autocomplete="off" />
+        <label class="sr-only" for="filter-type">Filter by employee type</label>
+        <select class="filter-select" id="filter-type">
           <option value="all">All types</option>
           <option value="FULL_TIME">Full-time</option>
           <option value="PART_TIME">Part-time</option>
         </select>
       </div>
       <div class="table-wrap">
-        <div id="emp-table-body"><div class="loading"><div class="spinner"></div>Fetching employees...</div></div>
+        <div id="emp-table-body"></div>
       </div>
-    </div>
+    </section>
 
     <!-- REST Endpoints -->
-    <div class="view" id="view-api">
-      <div style="margin-bottom:16px;font-size:12px;color:var(--muted)">
-        Base URL: <code style="background:var(--card);padding:3px 8px;border-radius:5px;color:var(--accent2)">https://employee-payroll-api-gtbc.onrender.com</code>
-      </div>
+    <section class="view" id="view-api" aria-label="REST endpoints">
+      <div class="base-url">Base URL: <code id="api-base-label"></code></div>
+      <p class="api-note">Endpoint patterns used by this project. They are listed as documented in the project, not verified live from this page.</p>
       <div class="api-list" id="api-list"></div>
-    </div>
+    </section>
 
     <!-- Payslip -->
-    <div class="view" id="view-payslip">
+    <section class="view" id="view-payslip" aria-label="Payslip">
       <div class="emp-select-wrap">
-        <label>Select employee:</label>
-        <select class="filter-select" id="payslip-select" onchange="renderPayslip()" style="width:220px"></select>
+        <label for="payslip-select">Select employee:</label>
+        <select class="filter-select" id="payslip-select" style="min-width:220px"></select>
       </div>
-      <div id="payslip-wrap"><div class="loading"><div class="spinner"></div>Loading...</div></div>
-    </div>
+      <div id="payslip-wrap"></div>
+    </section>
 
-  </div>
+  </main>
 </div>
 
 <!-- Add Employee Modal -->
 <div class="modal-overlay" id="modal">
-  <div class="modal">
-    <div class="modal-title">Add New Employee</div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 class="modal-title" id="modal-title">Add New Employee</h3>
     <div class="form-group">
-      <label class="form-label">Name</label>
-      <input class="form-input" id="f-name" placeholder="e.g. Priya Sharma"/>
+      <label class="form-label" for="f-name">Name</label>
+      <input class="form-input" id="f-name" placeholder="e.g. Priya Sharma" maxlength="100" autocomplete="off" />
     </div>
     <div class="form-group">
-      <label class="form-label">Department</label>
-      <input class="form-input" id="f-dept" placeholder="e.g. Engineering"/>
+      <label class="form-label" for="f-dept">Department</label>
+      <input class="form-input" id="f-dept" placeholder="e.g. Engineering" maxlength="100" autocomplete="off" />
     </div>
     <div class="form-group">
-      <label class="form-label">Employee Type</label>
-      <select class="form-select" id="f-type" onchange="toggleFields()">
+      <label class="form-label" for="f-type">Employee Type</label>
+      <select class="form-select" id="f-type">
         <option value="fulltime">Full-time</option>
         <option value="parttime">Part-time</option>
       </select>
     </div>
     <div id="ft-fields">
       <div class="form-group">
-        <label class="form-label">Monthly Salary (â‚¹)</label>
-        <input class="form-input" id="f-salary" type="number" placeholder="e.g. 65000"/>
+        <label class="form-label" for="f-salary">Monthly Salary (₹)</label>
+        <input class="form-input" id="f-salary" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 65000" />
       </div>
     </div>
-    <div id="pt-fields" style="display:none">
+    <div id="pt-fields" hidden>
       <div class="form-group">
-        <label class="form-label">Hours Worked</label>
-        <input class="form-input" id="f-hours" type="number" placeholder="e.g. 80"/>
+        <label class="form-label" for="f-hours">Hours Worked</label>
+        <input class="form-input" id="f-hours" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 80" />
       </div>
       <div class="form-group">
-        <label class="form-label">Hourly Rate (â‚¹)</label>
-        <input class="form-input" id="f-rate" type="number" placeholder="e.g. 400"/>
+        <label class="form-label" for="f-rate">Hourly Rate (₹)</label>
+        <input class="form-input" id="f-rate" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 400" />
       </div>
     </div>
-    <div class="error-msg" id="f-error"></div>
+    <div class="error-msg" id="f-error" role="alert" aria-live="assertive"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="addEmployee()">Add Employee</button>
+      <button class="btn btn-ghost" id="modal-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="modal-submit" type="button">Add Employee</button>
     </div>
   </div>
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-const API = 'https://employee-payroll-api-gtbc.onrender.com/api/employees';
-let allEmployees = [];
-let currentView = 'dashboard';
+'use strict';
 
-const endpoints = [
-  {m:'GET',    p:'/api/employees',              d:'Get all employees'},
-  {m:'GET',    p:'/api/employees/{id}',         d:'Get by ID'},
-  {m:'GET',    p:'/api/employees/fulltime',      d:'Full-time employees'},
-  {m:'GET',    p:'/api/employees/parttime',      d:'Part-time employees'},
-  {m:'GET',    p:'/api/employees/department?name=', d:'Filter by department'},
-  {m:'GET',    p:'/api/employees/search?name=', d:'Search by name'},
-  {m:'GET',    p:'/api/employees/summary',       d:'Payroll summary'},
-  {m:'POST',   p:'/api/employees/fulltime',      d:'Add full-time employee'},
-  {m:'POST',   p:'/api/employees/parttime',      d:'Add part-time employee'},
-  {m:'PUT',    p:'/api/employees/{id}/fulltime', d:'Update full-time'},
-  {m:'PUT',    p:'/api/employees/{id}/parttime', d:'Update part-time'},
-  {m:'DELETE', p:'/api/employees/{id}',          d:'Delete employee'},
+/* ───────────── Configuration ───────────── */
+const API_ORIGIN   = 'https://employee-payroll-api-gtbc.onrender.com';
+const API_BASE     = API_ORIGIN + '/api';
+const EMPLOYEE_API = API_BASE + '/employees';
+const AUTH_API     = API_BASE + '/auth';
+const HEALTH_URL   = API_ORIGIN + '/health';
+
+const REQUEST_TIMEOUT_MS = 45000;  // Render free tier can take a while to wake up
+const HEALTH_TIMEOUT_MS  = 30000;
+const TOKEN_KEY    = 'payroll_token';
+const USERNAME_KEY = 'payroll_username';
+
+// Illustrative payslip percentages. These are NOT calculated by the backend
+// and are not statutory payroll rules.
+const PAYSLIP_RULES = { hra: 0.20, da: 0.10, pf: 0.12, tax: 0.05 };
+
+const ENDPOINTS = [
+  { m: 'GET',    p: '/api/employees',                    d: 'Get all employees' },
+  { m: 'GET',    p: '/api/employees/{id}',               d: 'Get by ID' },
+  { m: 'GET',    p: '/api/employees/fulltime',           d: 'Full-time employees' },
+  { m: 'GET',    p: '/api/employees/parttime',           d: 'Part-time employees' },
+  { m: 'GET',    p: '/api/employees/department?name=',   d: 'Filter by department' },
+  { m: 'GET',    p: '/api/employees/search?name=',       d: 'Search by name' },
+  { m: 'GET',    p: '/api/employees/summary',            d: 'Payroll summary' },
+  { m: 'POST',   p: '/api/employees/fulltime',           d: 'Add full-time employee' },
+  { m: 'POST',   p: '/api/employees/parttime',           d: 'Add part-time employee' },
+  { m: 'PUT',    p: '/api/employees/{id}/fulltime',      d: 'Update full-time employee' },
+  { m: 'PUT',    p: '/api/employees/{id}/parttime',      d: 'Update part-time employee' },
+  { m: 'DELETE', p: '/api/employees/{id}',               d: 'Delete employee' },
+  { m: 'POST',   p: '/api/auth/login',                   d: 'Sign in (no token needed)' },
+  { m: 'POST',   p: '/api/auth/register',                d: 'Create account (no token needed)' },
+  { m: 'GET',    p: '/health',                           d: 'Backend health check' }
 ];
 
-function fmt(n){ return 'â‚¹' + Number(n).toLocaleString('en-IN'); }
+const VIEW_TITLES = { dashboard: 'Dashboard', employees: 'Employees', api: 'REST Endpoints', payslip: 'Payslip Generator' };
 
-async function fetchAll() {
-  try {
-    const res = await apiFetch(API);
-    allEmployees = await res.json();
-    return allEmployees;
-  } catch(e) {
-    showToast('Cannot connect to API. Is Spring Boot running?', 'error');
-    return [];
-  }
-}
+/* ───────────── State ───────────── */
+const state = {
+  view: 'dashboard',
+  employees: [],
+  summary: null,
+  empStatus: 'loading',   // 'loading' | 'ready' | 'error'
+  empError: '',
+  sumStatus: 'loading',
+  sumError: '',
+  loadSeq: 0,             // guards against stale responses
+  authMode: 'login',
+  submitting: false,
+  authBusy: false,
+  unauthorizedHandled: false
+};
 
-async function fetchSummary() {
-  try {
-    const res = await apiFetch(API + '/summary');
-    return await res.json();
-  } catch(e) { return null; }
-}
+/* ───────────── Small helpers ───────────── */
+const $ = id => document.getElementById(id);
 
-async function loadDashboard() {
-  const [emps, summary] = await Promise.all([fetchAll(), fetchSummary()]);
-  if (summary) {
-    document.getElementById('m-total').textContent   = summary.totalEmployees;
-    document.getElementById('m-ft').textContent      = summary.fullTimeCount;
-    document.getElementById('m-pt').textContent      = summary.partTimeCount;
-    document.getElementById('m-payroll').textContent = fmt(summary.totalPayroll);
-    document.getElementById('m-avg').textContent     = 'Avg ' + fmt(Math.round(summary.averageSalary));
-  }
-  renderDashTable(emps);
-  renderBarChart(emps);
-}
-
-function renderDashTable(emps) {
-  const el = document.getElementById('dash-table-body');
-  if (!emps.length) { el.innerHTML = '<div class="empty-state">No employees found.</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Type</th><th>Salary</th></tr></thead>
-    <tbody>${emps.map(e=>`<tr>
-      <td class="id-cell">#${e.id}</td>
-      <td style="font-weight:500">${e.name}</td>
-      <td>${e.department}</td>
-      <td><span class="badge ${e.employeeType==='FULL_TIME'?'badge-ft':'badge-pt'}">${e.employeeType==='FULL_TIME'?'Full-time':'Part-time'}</span></td>
-      <td class="salary-cell">${fmt(e.salary)}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
-}
-
-function renderBarChart(emps) {
-  const wrap = document.getElementById('bar-chart-wrap');
-  if (!emps.length) { wrap.innerHTML = '<div class="empty-state">No data.</div>'; return; }
-  const total = emps.reduce((s,e)=>s+e.salary,0);
-  wrap.innerHTML = `<div class="bar-chart">${emps.map(e=>{
-    const pct = Math.round(e.salary/total*100);
-    const color = e.employeeType==='FULL_TIME' ? '#6c63ff' : '#2dd4bf';
-    return `<div class="bar-row">
-      <div class="bar-name" title="${e.name}">${e.name.split(' ')[0]}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="bar-val">${fmt(e.salary)}</div>
-    </div>`;
-  }).join('')}</div>`;
-}
-
-async function loadEmployees() {
-  const emps = allEmployees.length ? allEmployees : await fetchAll();
-  renderEmpTable(emps);
-  loadPayslipSelect(emps);
-}
-
-function renderEmpTable(emps) {
-  const q    = document.getElementById('search-input')?.value.toLowerCase() || '';
-  const type = document.getElementById('filter-type')?.value || 'all';
-  const filtered = emps.filter(e => {
-    const matchQ = !q || e.name.toLowerCase().includes(q) || e.department.toLowerCase().includes(q);
-    const matchT = type==='all' || e.employeeType===type;
-    return matchQ && matchT;
+function el(tag, props, ...children) {
+  const node = document.createElement(tag);
+  Object.entries(props || {}).forEach(([key, value]) => {
+    if (value === false || value === null || value === undefined) return;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key.startsWith('on') && typeof value === 'function') node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? '' : String(value));
   });
-  const el = document.getElementById('emp-table-body');
-  if (!filtered.length) { el.innerHTML = '<div class="empty-state">No employees match your search.</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Type</th><th>Details</th><th>Net Salary</th><th></th></tr></thead>
-    <tbody>${filtered.map(e=>`<tr>
-      <td class="id-cell">#${e.id}</td>
-      <td style="font-weight:500">${e.name}</td>
-      <td>${e.department}</td>
-      <td><span class="badge ${e.employeeType==='FULL_TIME'?'badge-ft':'badge-pt'}">${e.employeeType==='FULL_TIME'?'Full-time':'Part-time'}</span></td>
-      <td style="color:var(--muted);font-size:12px">${e.employeeType==='FULL_TIME'?fmt(e.monthlySalary)+'/mo':e.hoursWorked+' hrs Ã— '+fmt(e.hourlyRate)}</td>
-      <td class="salary-cell">${fmt(e.salary)}</td>
-      <td><div class="action-btns">
-        <button class="action-btn del" onclick="deleteEmployee(${e.id})">Remove</button>
-      </div></td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+  children.flat().forEach(child => { if (child !== null && child !== undefined && child !== false) node.append(child); });
+  return node;
 }
 
-function filterTable() {
-  renderEmpTable(allEmployees);
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+function toNum(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-function loadPayslipSelect(emps) {
-  const sel = document.getElementById('payslip-select');
-  const ft  = emps.filter(e=>e.employeeType==='FULL_TIME');
-  sel.innerHTML = ft.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-  if (ft.length) renderPayslip();
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2
+});
+function money(value) {
+  const n = toNum(value);
+  return n === null ? '—' : currencyFormatter.format(n);
+}
+function intText(value) {
+  const n = toNum(value);
+  return n === null ? '—' : new Intl.NumberFormat('en-IN').format(n);
 }
 
-function renderPayslip() {
-  const id  = parseInt(document.getElementById('payslip-select').value);
-  const emp = allEmployees.find(e=>e.id===id);
-  if (!emp) return;
-  const basic = emp.monthlySalary;
-  const hra   = Math.round(basic*0.20);
-  const da    = Math.round(basic*0.10);
-  const gross = basic+hra+da;
-  const pf    = Math.round(basic*0.12);
-  const tax   = Math.round(gross*0.05);
-  const net   = gross-pf-tax;
-  document.getElementById('payslip-wrap').innerHTML = `
-  <div class="payslip-card">
-    <div class="payslip-header-bar">
-      <div class="payslip-company">ABC Technologies Pvt. Ltd.</div>
-      <div class="payslip-sub">Employee Payslip â€” Monthly</div>
-    </div>
-    <div class="payslip-body">
-      <div class="payslip-row"><span class="label">Employee</span><span style="font-weight:500">${emp.name}</span></div>
-      <div class="payslip-row"><span class="label">ID</span><span>#${emp.id}</span></div>
-      <div class="payslip-row"><span class="label">Department</span><span>${emp.department}</span></div>
-      <div class="payslip-section-title">Earnings</div>
-      <div class="payslip-row"><span class="label">Basic Salary</span><span>${fmt(basic)}</span></div>
-      <div class="payslip-row"><span class="label">HRA (20%)</span><span>${fmt(hra)}</span></div>
-      <div class="payslip-row"><span class="label">DA (10%)</span><span>${fmt(da)}</span></div>
-      <div class="payslip-divider"></div>
-      <div class="payslip-row"><span class="label">Gross Salary</span><span style="font-weight:600">${fmt(gross)}</span></div>
-      <div class="payslip-section-title">Deductions</div>
-      <div class="payslip-row"><span class="label">PF (12%)</span><span class="deduction">- ${fmt(pf)}</span></div>
-      <div class="payslip-row"><span class="label">Income Tax (5%)</span><span class="deduction">- ${fmt(tax)}</span></div>
-      <div class="payslip-divider"></div>
-      <div class="payslip-row payslip-total"><span>Net Salary</span><span class="amount">${fmt(net)}</span></div>
-    </div>
-  </div>`;
+function employeeKind(e) {
+  const t = String(e && e.employeeType ? e.employeeType : '').toUpperCase();
+  if (t.includes('FULL')) return 'FT';
+  if (t.includes('PART')) return 'PT';
+  return 'UNK';
 }
-
-function loadApiView() {
-  const cls = {GET:'m-get',POST:'m-post',PUT:'m-put',DELETE:'m-delete'};
-  document.getElementById('api-list').innerHTML = endpoints.map(e=>`
-    <div class="api-item">
-      <span class="method-badge ${cls[e.m]}">${e.m}</span>
-      <span class="api-path">${e.p}</span>
-      <span class="api-desc">${e.d}</span>
-    </div>`).join('');
-}
-
-function showView(v) {
-  currentView = v;
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
-  document.querySelectorAll('.nav-item')[['dashboard','employees','api','payslip'].indexOf(v)].classList.add('active');
-  const titles = {dashboard:'Dashboard',employees:'Employees',api:'REST Endpoints',payslip:'Payslip Generator'};
-  document.getElementById('page-title').textContent = titles[v];
-  if (v==='employees') loadEmployees();
-  if (v==='api') loadApiView();
-  if (v==='payslip') { if(allEmployees.length) loadPayslipSelect(allEmployees); else fetchAll().then(loadPayslipSelect); }
-}
-
-function openModal() {
-  document.getElementById('modal').classList.add('open');
-}
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-  document.getElementById('f-error').textContent = '';
-  ['f-name','f-dept','f-salary','f-hours','f-rate'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-}
-function toggleFields() {
-  const t = document.getElementById('f-type').value;
-  document.getElementById('ft-fields').style.display = t==='fulltime'?'block':'none';
-  document.getElementById('pt-fields').style.display = t==='parttime'?'block':'none';
-}
-
-async function addEmployee() {
-  const name = document.getElementById('f-name').value.trim();
-  const dept = document.getElementById('f-dept').value.trim();
-  const type = document.getElementById('f-type').value;
-  const err  = document.getElementById('f-error');
-  if (!name||!dept) { err.textContent='Name and department are required.'; return; }
-  let body, url;
-  if (type==='fulltime') {
-    const sal = parseFloat(document.getElementById('f-salary').value);
-    if (!sal||sal<=0) { err.textContent='Enter a valid monthly salary.'; return; }
-    body = JSON.stringify({name, department:dept, monthlySalary:sal});
-    url  = API+'/fulltime';
-  } else {
-    const hrs  = parseInt(document.getElementById('f-hours').value);
-    const rate = parseFloat(document.getElementById('f-rate').value);
-    if (!hrs||hrs<=0||!rate||rate<=0) { err.textContent='Enter valid hours and rate.'; return; }
-    body = JSON.stringify({name, department:dept, hoursWorked:hrs, hourlyRate:rate});
-    url  = API+'/parttime';
+function employeeSalary(e) {
+  const direct = toNum(e.salary);
+  if (direct !== null) return direct;
+  const kind = employeeKind(e);
+  if (kind === 'FT') return toNum(e.monthlySalary);
+  if (kind === 'PT') {
+    const h = toNum(e.hoursWorked), r = toNum(e.hourlyRate);
+    return h !== null && r !== null ? h * r : null;
   }
+  return null;
+}
+function textOf(value, fallback) {
+  if (value === null || value === undefined || String(value).trim() === '') return fallback === undefined ? '—' : fallback;
+  return String(value);
+}
+
+let toastTimer = null;
+function showToast(message, type) {
+  const t = $('toast');
+  t.textContent = (type === 'error' ? '✕ ' : '✓ ') + message;
+  t.className = 'toast ' + (type === 'error' ? 'error' : 'success') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+/* ───────────── Session ───────────── */
+function getToken() {
+  try { return sessionStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+}
+function getUsername() {
+  try { return sessionStorage.getItem(USERNAME_KEY) || ''; } catch (e) { return ''; }
+}
+function saveSession(token, username) {
   try {
-    const res = await apiFetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body});
-    if (res.ok) {
-      closeModal();
-      showToast('Employee added successfully!', 'success');
-      allEmployees = [];
-      await loadDashboard();
-      if (currentView==='employees') loadEmployees();
-    } else {
-      const data = await res.json();
-      err.textContent = data.message || 'Something went wrong.';
-    }
-  } catch(e) { err.textContent = 'Cannot connect to API.'; }
+    sessionStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(USERNAME_KEY, username || '');
+  } catch (e) { /* storage unavailable: session will not persist across reloads */ }
 }
-
-async function deleteEmployee(id) {
-  if (!confirm('Remove this employee?')) return;
+function clearSession() {
   try {
-    const res = await apiFetch(API+'/'+id, {method:'DELETE'});
-    if (res.ok) {
-      showToast('Employee removed.', 'success');
-      allEmployees = [];
-      await loadDashboard();
-      if (currentView==='employees') loadEmployees();
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USERNAME_KEY);
+  } catch (e) { /* ignore */ }
+}
+
+/* ───────────── API layer ───────────── */
+class ApiError extends Error {
+  constructor(message, status, kind) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status || 0;
+    this.kind = kind || 'http';   // 'network' | 'timeout' | 'http' | 'session'
+    this.silent = false;          // true when the UI has already handled it (e.g. 401 -> login)
+  }
+}
+
+function friendlyStatusMessage(status, serverMessage) {
+  const safe = typeof serverMessage === 'string' && serverMessage.length > 0 && serverMessage.length <= 200
+    ? serverMessage : '';
+  switch (status) {
+    case 400: case 422: return safe || 'The server rejected the submitted data. Please check the values and try again.';
+    case 401: return 'Authentication required. Please sign in.';
+    case 403: return 'You do not have permission to do that.';
+    case 404: return 'The requested item was not found.';
+    case 409: return safe || 'That item already exists.';
+    case 429: return 'Too many requests. Please wait a moment and try again.';
+    default:
+      return status >= 500
+        ? 'The server had a problem handling the request. Please try again shortly.'
+        : (safe || 'The request failed (HTTP ' + status + ').');
+  }
+}
+
+function extractServerMessage(data) {
+  if (!data || typeof data !== 'object') return '';
+  if (typeof data.message === 'string') return data.message;
+  if (typeof data.error === 'string') return data.error;
+  if (data.errors && typeof data.errors === 'object') {
+    const parts = Object.values(data.errors).filter(v => typeof v === 'string');
+    if (parts.length) return parts.join(' ');
+  }
+  return '';
+}
+
+async function apiRequest(url, options) {
+  const opts = options || {};
+  const method = opts.method || 'GET';
+  const useAuth = opts.auth !== false;
+
+  // Never send the JWT anywhere except the configured API.
+  if (useAuth && !url.startsWith(API_BASE + '/')) {
+    throw new ApiError('Blocked request to an untrusted address.', 0, 'network');
+  }
+
+  const headers = { 'Accept': 'application/json' };
+  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (useAuth) {
+    const token = getToken();
+    if (!token) {
+      const err = new ApiError('Authentication required. Please sign in.', 401, 'session');
+      err.silent = true;
+      handleUnauthorized();
+      throw err;
     }
-  } catch(e) { showToast('Cannot connect to API.', 'error'); }
-}
-
-function showToast(msg, type='success') {
-  const t = document.getElementById('toast');
-  t.textContent = (type==='success'?'âœ“ ':'âœ• ') + msg;
-  t.className = `toast ${type} show`;
-  setTimeout(()=>t.classList.remove('show'), 3000);
-}
-
-const AUTH_API = 'https://employee-payroll-api-gtbc.onrender.com/api/auth';
-let authMode = 'login';
-
-function showAuthScreen() {
-  let panel = document.getElementById('auth-panel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'auth-panel';
-    panel.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#0a0a0f;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Arial,sans-serif;color:#f0f0f5';
-    panel.innerHTML = `
-      <form id="auth-form" style="width:100%;max-width:380px;background:#16161f;border:1px solid #333;padding:28px;border-radius:16px">
-        <h2 style="margin-bottom:8px">Payroll<span style="color:#a78bfa">Pro</span></h2>
-        <p id="auth-subtitle" style="color:#aaa;margin-bottom:22px">Sign in to your payroll dashboard</p>
-        <label for="auth-username">Username</label>
-        <input id="auth-username" required autocomplete="username" style="display:block;box-sizing:border-box;width:100%;margin:8px 0 16px;padding:12px;border-radius:8px;background:#0a0a0f;color:white;border:1px solid #444">
-        <label for="auth-password">Password</label>
-        <input id="auth-password" type="password" required minlength="6" autocomplete="current-password" style="display:block;box-sizing:border-box;width:100%;margin:8px 0 16px;padding:12px;border-radius:8px;background:#0a0a0f;color:white;border:1px solid #444">
-        <p id="auth-error" role="alert" style="color:#f87171;margin:8px 0"></p>
-        <button id="auth-submit" type="submit" style="width:100%;padding:12px;background:#6c63ff;color:white;border:0;border-radius:8px;cursor:pointer">Sign In</button>
-        <button id="auth-toggle" type="button" style="width:100%;margin-top:12px;padding:10px;background:transparent;color:#c4b5fd;border:0;cursor:pointer">Create an account</button>
-      </form>`;
-    document.body.appendChild(panel);
-
-    document.getElementById('auth-form').addEventListener('submit', async event => {
-      event.preventDefault();
-      const button = document.getElementById('auth-submit');
-      const error = document.getElementById('auth-error');
-      button.disabled = true;
-      error.textContent = '';
-
-      try {
-        const response = await fetch(AUTH_API + (authMode === 'login' ? '/login' : '/register'), {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-          body: JSON.stringify({
-            username: document.getElementById('auth-username').value.trim(),
-            password: document.getElementById('auth-password').value
-          })
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.token) {
-          throw new Error(data.message || (response.status === 409 ? 'Username already exists.' : 'Authentication failed. Check your details.'));
-        }
-
-        sessionStorage.setItem('payroll_token', data.token);
-        sessionStorage.setItem('payroll_username', data.username || '');
-        initApp();
-      } catch (err) {
-        error.textContent = err.message || 'Could not connect to the backend.';
-      } finally {
-        button.disabled = false;
-      }
-    });
-
-    document.getElementById('auth-toggle').addEventListener('click', () => {
-      authMode = authMode === 'login' ? 'register' : 'login';
-      document.getElementById('auth-subtitle').textContent =
-        authMode === 'login' ? 'Sign in to your payroll dashboard' : 'Create your payroll account';
-      document.getElementById('auth-submit').textContent =
-        authMode === 'login' ? 'Sign In' : 'Register';
-      document.getElementById('auth-toggle').textContent =
-        authMode === 'login' ? 'Create an account' : 'Back to sign in';
-      document.getElementById('auth-password').autocomplete =
-        authMode === 'login' ? 'current-password' : 'new-password';
-      document.getElementById('auth-error').textContent = '';
-    });
+    headers['Authorization'] = 'Bearer ' + token;
   }
 
-  panel.style.display = 'flex';
-}
-
-async function apiFetch(url, options = {}) {
-  const token = sessionStorage.getItem('payroll_token');
-  const headers = new Headers(options.headers || {});
-  if (token) headers.set('Authorization', 'Bearer ' + token);
-
-  const response = await fetch(url, {...options, headers});
-  if (response.status === 401) {
-    sessionStorage.removeItem('payroll_token');
-    showAuthScreen();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeout || REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      throw new ApiError('The server took too long to respond. It may be waking up — please try again.', 0, 'timeout');
+    }
+    throw new ApiError('Cannot reach the server. Check your connection, or the server may be waking up (this can take up to a minute). This can also be a CORS problem.', 0, 'network');
+  } finally {
+    clearTimeout(timer);
   }
-  return response;
+
+  let data = null;
+  try {
+    const text = await response.text();
+    if (text) data = JSON.parse(text);
+  } catch (e) {
+    data = null; // empty or non-JSON body
+  }
+
+  if (response.status === 401 && useAuth) {
+    const err = new ApiError('Your session expired. Please sign in again.', 401, 'session');
+    err.silent = true;
+    handleUnauthorized();
+    throw err;
+  }
+  if (!response.ok) {
+    throw new ApiError(friendlyStatusMessage(response.status, extractServerMessage(data)), response.status, 'http');
+  }
+  return data;
 }
 
-function initApp() {
-  const token = sessionStorage.getItem('payroll_token');
-  if (!token) {
-    showAuthScreen();
+function employeeUrl(path) { return EMPLOYEE_API + (path || ''); }
+
+/* ───────────── Connection status ───────────── */
+let healthCheckInFlight = false;
+function setConnection(stateName, text) {
+  const box = $('conn');
+  box.dataset.state = stateName;
+  $('conn-text').textContent = text;
+  $('conn-retry').hidden = stateName !== 'down';
+}
+async function checkHealth() {
+  if (healthCheckInFlight) return;
+  healthCheckInFlight = true;
+  setConnection('checking', 'Checking connection…');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+  try {
+    const res = await fetch(HEALTH_URL, { method: 'GET', signal: controller.signal });
+    if (res.ok) setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
+    else setConnection('down', 'Backend unavailable');
+  } catch (e) {
+    setConnection('down', 'Backend unavailable');
+  } finally {
+    clearTimeout(timer);
+    healthCheckInFlight = false;
+  }
+}
+
+/* ───────────── Authentication UI ───────────── */
+function showAuthScreen(message) {
+  $('auth-screen').hidden = false;
+  $('auth-error').textContent = message || '';
+  $('logout-btn').hidden = true;
+  $('user-chip').hidden = true;
+  $('open-modal').hidden = true;
+  closeModal();
+  const box = $('conn');
+  if (box.dataset.state === 'ok') setConnection('auth', 'Authentication required');
+  setTimeout(() => $('auth-username').focus(), 0);
+}
+
+function hideAuthScreen() {
+  $('auth-screen').hidden = true;
+  $('auth-error').textContent = '';
+  $('auth-password').value = '';
+}
+
+function handleUnauthorized() {
+  // Runs once per session: parallel 401s must not trigger repeated work.
+  if (!getToken() && state.unauthorizedHandled) return;
+  clearSession();
+  state.unauthorizedHandled = true;
+  state.loadSeq++;               // discard in-flight dashboard responses
+  state.employees = [];
+  state.summary = null;
+  showAuthScreen('Your session expired or authentication is required. Please sign in again.');
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const login = mode === 'login';
+  $('auth-subtitle').textContent = login ? 'Sign in to your payroll dashboard' : 'Create your payroll account';
+  $('auth-submit').textContent = login ? 'Sign in' : 'Register';
+  $('auth-toggle').textContent = login ? 'Create an account' : 'Back to sign in';
+  $('auth-password').autocomplete = login ? 'current-password' : 'new-password';
+  $('auth-error').textContent = '';
+}
+
+async function submitAuth(event) {
+  event.preventDefault();
+  if (state.authBusy) return;
+  const username = $('auth-username').value.trim();
+  const password = $('auth-password').value;
+  const errorBox = $('auth-error');
+  errorBox.textContent = '';
+
+  if (!username) { errorBox.textContent = 'Enter your username.'; $('auth-username').focus(); return; }
+  if (!password) { errorBox.textContent = 'Enter your password.'; $('auth-password').focus(); return; }
+  if (state.authMode === 'register' && password.length < 6) {
+    errorBox.textContent = 'Password must be at least 6 characters.';
+    $('auth-password').focus();
     return;
   }
 
-  const panel = document.getElementById('auth-panel');
-  if (panel) panel.style.display = 'none';
+  state.authBusy = true;
+  const button = $('auth-submit');
+  const idleLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Please wait…';
 
-  if (!document.getElementById('payroll-logout')) {
-    const button = document.createElement('button');
-    button.id = 'payroll-logout';
-    button.className = 'btn btn-ghost';
-    button.textContent = 'Sign Out';
-    button.style.marginLeft = '10px';
-    button.onclick = () => {
-      sessionStorage.removeItem('payroll_token');
-      sessionStorage.removeItem('payroll_username');
-      location.reload();
-    };
-    document.querySelector('.topbar').appendChild(button);
+  try {
+    const endpoint = AUTH_API + (state.authMode === 'login' ? '/login' : '/register');
+    const data = await apiRequest(endpoint, { method: 'POST', auth: false, body: { username, password } });
+    if (!data || typeof data.token !== 'string' || !data.token) {
+      throw new ApiError('The server did not return a session token. Please try again.', 0, 'http');
+    }
+    saveSession(data.token, typeof data.username === 'string' ? data.username : username);
+    state.unauthorizedHandled = false;
+    initApp();
+  } catch (err) {
+    if (err instanceof ApiError && err.kind === 'http' && err.status === 401) {
+      errorBox.textContent = 'Invalid username or password.';
+    } else if (err instanceof ApiError && err.kind === 'http' && err.status === 403) {
+      errorBox.textContent = state.authMode === 'login' ? 'Invalid username or password.' : 'Registration is not allowed for those details.';
+    } else if (err instanceof ApiError) {
+      errorBox.textContent = err.message;
+    } else {
+      errorBox.textContent = 'Something went wrong. Please try again.';
+    }
+  } finally {
+    state.authBusy = false;
+    button.disabled = false;
+    button.textContent = state.authMode === 'login' ? 'Sign in' : 'Register';
+    if (idleLabel === '') button.textContent = 'Sign in';
+  }
+}
+
+function logout() {
+  clearSession();
+  state.unauthorizedHandled = false;
+  state.loadSeq++;
+  state.employees = [];
+  state.summary = null;
+  state.empStatus = 'loading';
+  state.sumStatus = 'loading';
+  setAuthMode('login');
+  $('auth-username').value = '';
+  showAuthScreen('');
+  renderAll();
+}
+
+/* ───────────── Data loading ───────────── */
+async function loadAll() {
+  const seq = ++state.loadSeq;
+  state.empStatus = 'loading';
+  state.sumStatus = 'loading';
+  renderAll();
+
+  const [empResult, sumResult] = await Promise.allSettled([
+    apiRequest(employeeUrl('')),
+    apiRequest(employeeUrl('/summary'))
+  ]);
+  if (seq !== state.loadSeq || !getToken()) return; // stale or logged out
+
+  if (empResult.status === 'fulfilled' && Array.isArray(empResult.value)) {
+    state.employees = empResult.value.filter(item => item && typeof item === 'object');
+    state.empStatus = 'ready';
+    state.empError = '';
+    if ($('conn').dataset.state !== 'ok') setConnection('ok', 'Backend connected');
+  } else {
+    state.employees = [];
+    state.empStatus = 'error';
+    state.empError = empResult.status === 'rejected'
+      ? (empResult.reason && empResult.reason.message) || 'Could not load employees.'
+      : 'The server returned an unexpected response for the employee list.';
+    if (empResult.status === 'rejected' && empResult.reason && empResult.reason.kind === 'network') {
+      setConnection('down', 'Backend unavailable');
+    }
   }
 
-  initApp();
+  if (sumResult.status === 'fulfilled' && sumResult.value && typeof sumResult.value === 'object' && !Array.isArray(sumResult.value)) {
+    state.summary = sumResult.value;
+    state.sumStatus = 'ready';
+    state.sumError = '';
+  } else {
+    state.summary = null;
+    state.sumStatus = 'error';
+    state.sumError = sumResult.status === 'rejected'
+      ? (sumResult.reason && sumResult.reason.message) || 'Could not load the payroll summary.'
+      : 'The server returned an unexpected response for the payroll summary.';
+  }
+
+  renderAll();
 }
-// Init
+
+/* ───────────── Rendering ───────────── */
+function stateBox(kind, title, detail, retryLabel, retryFn) {
+  const box = el('div', { class: 'state-box' + (kind === 'error' ? ' error' : '') });
+  if (kind === 'loading') box.append(el('div', { class: 'spinner', 'aria-hidden': 'true' }));
+  box.append(el('div', { class: 'state-title', text: title }));
+  if (detail) box.append(el('div', { text: detail }));
+  if (retryLabel && retryFn) box.append(el('button', { class: 'btn btn-ghost', type: 'button', text: retryLabel, onclick: retryFn }));
+  return box;
+}
+
+function badge(e) {
+  const kind = employeeKind(e);
+  if (kind === 'FT') return el('span', { class: 'badge badge-ft', text: 'Full-time' });
+  if (kind === 'PT') return el('span', { class: 'badge badge-pt', text: 'Part-time' });
+  return el('span', { class: 'badge badge-unk', text: 'Unknown' });
+}
+
+function detailText(e) {
+  const kind = employeeKind(e);
+  if (kind === 'FT') return money(e.monthlySalary) + ' / month';
+  if (kind === 'PT') return intText(e.hoursWorked) + ' hrs × ' + money(e.hourlyRate);
+  return '—';
+}
+
+function buildTable(headers, rows) {
+  return el('div', { class: 'table-scroll' },
+    el('table', null,
+      el('thead', null, el('tr', null, headers.map(h => el('th', { scope: 'col', text: h })))),
+      el('tbody', null, rows)));
+}
+
+function renderMetrics() {
+  const emps = state.empStatus === 'ready' ? state.employees : null;
+  const sum = state.sumStatus === 'ready' ? state.summary : null;
+
+  const computedTotal = emps ? emps.length : null;
+  const computedFt = emps ? emps.filter(e => employeeKind(e) === 'FT').length : null;
+  const computedPt = emps ? emps.filter(e => employeeKind(e) === 'PT').length : null;
+  let computedPayroll = null;
+  if (emps) {
+    computedPayroll = emps.reduce((s, e) => { const v = employeeSalary(e); return v !== null && v >= 0 ? s + v : s; }, 0);
+  }
+
+  const pick = (summaryValue, fallback) => {
+    const n = sum ? toNum(summaryValue) : null;
+    return n !== null ? n : fallback;
+  };
+  const total = pick(sum && sum.totalEmployees, computedTotal);
+  const ft = pick(sum && sum.fullTimeCount, computedFt);
+  const pt = pick(sum && sum.partTimeCount, computedPt);
+  const payroll = pick(sum && sum.totalPayroll, computedPayroll);
+  let avg = pick(sum && sum.averageSalary, null);
+  if (avg === null && payroll !== null && total) avg = payroll / total;
+
+  $('m-total').textContent = intText(total);
+  $('m-ft').textContent = intText(ft);
+  $('m-pt').textContent = intText(pt);
+  $('m-payroll').textContent = money(payroll);
+  $('m-avg').textContent = 'Average ' + (avg === null ? '—' : money(Math.round(avg)));
+}
+
+function renderDashTable() {
+  const host = $('dash-table-body');
+  clear(host);
+  if (state.sumStatus === 'error' && state.empStatus === 'ready') {
+    host.append(el('div', { class: 'inline-note', text: 'Payroll summary is unavailable (' + state.sumError + ') — totals above are calculated from the employee list.' }));
+  }
+  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching from API…', 'The server may take a moment to wake up.')); return; }
+  if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
+  if (!state.employees.length) {
+    host.append(stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal));
+    return;
+  }
+  const rows = state.employees.map(e => el('tr', null,
+    el('td', { class: 'id-cell', text: '#' + textOf(e.id) }),
+    el('td', { style: 'font-weight:500', text: textOf(e.name) }),
+    el('td', { text: textOf(e.department) }),
+    el('td', null, badge(e)),
+    el('td', { class: 'salary-cell', text: money(employeeSalary(e)) })));
+  host.append(buildTable(['ID', 'Name', 'Department', 'Type', 'Salary'], rows));
+}
+
+function renderBarChart() {
+  const host = $('bar-chart-wrap');
+  clear(host);
+  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Loading…')); return; }
+  if (state.empStatus === 'error') { host.append(stateBox('error', 'Chart unavailable', state.empError, 'Try again', loadAll)); return; }
+
+  const items = state.employees
+    .map(e => ({ e, value: employeeSalary(e) }))
+    .filter(item => item.value !== null && item.value >= 0);
+  if (!items.length) { host.append(stateBox('empty', 'No salary data to chart yet')); return; }
+
+  const max = Math.max(...items.map(i => i.value));
+  const chart = el('div', { class: 'bar-chart', role: 'list', 'aria-label': 'Salary by employee' });
+  items.forEach(({ e, value }) => {
+    const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+    const name = textOf(e.name, 'Unnamed');
+    const color = employeeKind(e) === 'PT' ? '#2dd4bf' : '#6c63ff';
+    chart.append(el('div', { class: 'bar-row', role: 'listitem' },
+      el('div', { class: 'bar-name', title: name, text: name.split(' ')[0] }),
+      el('div', { class: 'bar-track' }, el('div', { class: 'bar-fill', style: 'width:' + pct.toFixed(1) + '%;background:' + color })),
+      el('div', { class: 'bar-val', text: money(value) })));
+  });
+  host.append(chart);
+  host.append(el('div', { class: 'legend' },
+    el('span', null, el('i', { style: 'background:#6c63ff' }), 'Full-time'),
+    el('span', null, el('i', { style: 'background:#2dd4bf' }), 'Part-time')));
+}
+
+function filteredEmployees() {
+  const q = $('search-input').value.trim().toLowerCase();
+  const type = $('filter-type').value;
+  return state.employees.filter(e => {
+    const matchQ = !q || textOf(e.name, '').toLowerCase().includes(q) || textOf(e.department, '').toLowerCase().includes(q);
+    const kind = employeeKind(e);
+    const matchT = type === 'all' || (type === 'FULL_TIME' && kind === 'FT') || (type === 'PART_TIME' && kind === 'PT');
+    return matchQ && matchT;
+  });
+}
+
+function renderEmpTable() {
+  const host = $('emp-table-body');
+  clear(host);
+  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching employees…')); return; }
+  if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
+  if (!state.employees.length) {
+    host.append(stateBox('empty', 'No employees yet', 'Use “Add Employee” to create the first record.', 'Add Employee', openModal));
+    return;
+  }
+  const list = filteredEmployees();
+  if (!list.length) { host.append(stateBox('empty', 'No employees match your search', 'Try a different name, department or type.')); return; }
+
+  const rows = list.map(e => {
+    const name = textOf(e.name, 'this employee');
+    const del = el('button', { class: 'action-btn', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name });
+    del.addEventListener('click', () => deleteEmployee(e.id, name, del));
+    return el('tr', null,
+      el('td', { class: 'id-cell', text: '#' + textOf(e.id) }),
+      el('td', { style: 'font-weight:500', text: textOf(e.name) }),
+      el('td', { text: textOf(e.department) }),
+      el('td', null, badge(e)),
+      el('td', { class: 'detail-cell', text: detailText(e) }),
+      el('td', { class: 'salary-cell', text: money(employeeSalary(e)) }),
+      el('td', null, del));
+  });
+  host.append(buildTable(['ID', 'Name', 'Department', 'Type', 'Details', 'Salary', 'Actions'], rows));
+}
+
+function renderPayslipSelect() {
+  const sel = $('payslip-select');
+  const previous = sel.value;
+  clear(sel);
+  const usable = state.empStatus === 'ready' ? state.employees.filter(e => toNum(e.id) !== null) : [];
+  usable.forEach(e => sel.append(el('option', { value: String(e.id), text: textOf(e.name, 'Unnamed') + ' (#' + e.id + ')' })));
+  sel.disabled = usable.length === 0;
+  if (usable.some(e => String(e.id) === previous)) sel.value = previous;
+  renderPayslip();
+}
+
+function payslipRow(label, value, extraClass, bold) {
+  return el('div', { class: 'payslip-row' + (extraClass ? ' ' + extraClass : '') },
+    el('span', { class: 'label', text: label }),
+    el('span', { class: bold === 'deduction' ? 'deduction' : '', style: bold === true ? 'font-weight:600' : false, text: value }));
+}
+
+function renderPayslip() {
+  const host = $('payslip-wrap');
+  clear(host);
+  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Loading…')); return; }
+  if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
+  if (!state.employees.length) { host.append(stateBox('empty', 'No employees available', 'Add an employee to generate a payslip.')); return; }
+
+  const sel = $('payslip-select');
+  const emp = state.employees.find(e => String(e.id) === sel.value);
+  if (!emp) { host.append(stateBox('empty', 'Select an employee', 'Choose someone from the list above.')); return; }
+
+  const kind = employeeKind(emp);
+  const body = el('div', { class: 'payslip-body' },
+    payslipRow('Employee', textOf(emp.name)),
+    payslipRow('ID', '#' + textOf(emp.id)),
+    payslipRow('Department', textOf(emp.department)),
+    payslipRow('Type', kind === 'FT' ? 'Full-time' : kind === 'PT' ? 'Part-time' : 'Unknown'));
+
+  if (kind === 'FT') {
+    const basic = toNum(emp.monthlySalary);
+    if (basic === null) {
+      body.append(el('p', { class: 'payslip-disclaimer', text: 'No monthly salary was returned for this employee, so a payslip cannot be estimated.' }));
+    } else {
+      const hra = Math.round(basic * PAYSLIP_RULES.hra);
+      const da = Math.round(basic * PAYSLIP_RULES.da);
+      const gross = basic + hra + da;
+      const pf = Math.round(basic * PAYSLIP_RULES.pf);
+      const tax = Math.round(gross * PAYSLIP_RULES.tax);
+      const net = gross - pf - tax;
+      body.append(
+        el('div', { class: 'payslip-section-title', text: 'Earnings' }),
+        payslipRow('Basic Salary', money(basic)),
+        payslipRow('HRA (20%)', money(hra)),
+        payslipRow('DA (10%)', money(da)),
+        el('div', { class: 'payslip-divider' }),
+        payslipRow('Gross Salary', money(gross), '', true),
+        el('div', { class: 'payslip-section-title', text: 'Deductions' }),
+        payslipRow('PF (12%)', '- ' + money(pf), '', 'deduction'),
+        payslipRow('Income Tax (5%)', '- ' + money(tax), '', 'deduction'),
+        el('div', { class: 'payslip-divider' }),
+        el('div', { class: 'payslip-row payslip-total' }, el('span', { text: 'Estimated Net Salary' }), el('span', { class: 'amount', text: money(net) })));
+    }
+  } else if (kind === 'PT') {
+    const hours = toNum(emp.hoursWorked), rate = toNum(emp.hourlyRate);
+    body.append(el('div', { class: 'payslip-section-title', text: 'Earnings' }),
+      payslipRow('Hours worked', intText(hours)),
+      payslipRow('Hourly rate', money(rate)),
+      el('div', { class: 'payslip-divider' }),
+      el('div', { class: 'payslip-row payslip-total' }, el('span', { text: 'Estimated Pay' }),
+        el('span', { class: 'amount', text: hours !== null && rate !== null ? money(hours * rate) : '—' })));
+  } else {
+    body.append(el('p', { class: 'payslip-disclaimer', text: 'The employee type is not recognised, so a payslip cannot be estimated.' }));
+  }
+
+  body.append(el('p', { class: 'payslip-disclaimer', text: 'Illustrative estimate only. Allowances and deductions use fixed example percentages, are not calculated by the backend, and are not an official payroll record.' }));
+
+  host.append(el('div', { class: 'payslip-card' },
+    el('div', { class: 'payslip-header-bar' },
+      el('div', { class: 'payslip-company', text: 'PayrollPro' }),
+      el('div', { class: 'payslip-sub', text: 'Estimated monthly payslip' })),
+    body));
+}
+
+function renderApiView() {
+  $('api-base-label').textContent = API_ORIGIN;
+  const cls = { GET: 'm-get', POST: 'm-post', PUT: 'm-put', DELETE: 'm-delete' };
+  const list = $('api-list');
+  clear(list);
+  ENDPOINTS.forEach(e => list.append(el('div', { class: 'api-item' },
+    el('span', { class: 'method-badge ' + cls[e.m], text: e.m }),
+    el('span', { class: 'api-path', text: e.p }),
+    el('span', { class: 'api-desc', text: e.d }))));
+}
+
+function renderAll() {
+  renderMetrics();
+  renderDashTable();
+  renderBarChart();
+  renderEmpTable();
+  renderPayslipSelect();
+}
+
+/* ───────────── Navigation ───────────── */
+function showView(view) {
+  if (!VIEW_TITLES[view]) return;
+  state.view = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    if (btn.dataset.view === view) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  });
+  $('page-title').textContent = VIEW_TITLES[view];
+  if (view === 'api') renderApiView();
+}
+
+/* ───────────── Modal ───────────── */
+let lastFocus = null;
+function openModal() {
+  if (!getToken()) return;
+  lastFocus = document.activeElement;
+  $('modal').classList.add('open');
+  setTimeout(() => $('f-name').focus(), 0);
+}
+function resetModalForm() {
+  ['f-name', 'f-dept', 'f-salary', 'f-hours', 'f-rate'].forEach(id => { $(id).value = ''; });
+  $('f-type').value = 'fulltime';
+  toggleFields();
+  $('f-error').textContent = '';
+}
+function closeModal() {
+  $('modal').classList.remove('open');
+  $('f-error').textContent = '';
+  if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  lastFocus = null;
+}
+function toggleFields() {
+  const t = $('f-type').value;
+  $('ft-fields').hidden = t !== 'fulltime';
+  $('pt-fields').hidden = t !== 'parttime';
+}
+function trapFocus(event) {
+  if (event.key === 'Escape') { closeModal(); return; }
+  if (event.key !== 'Tab') return;
+  const focusables = Array.from($('modal').querySelectorAll('input, select, button')).filter(n => !n.disabled && n.offsetParent !== null);
+  if (!focusables.length) return;
+  const first = focusables[0], last = focusables[focusables.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
+
+/* ───────────── Employee actions ───────────── */
+async function addEmployee() {
+  if (state.submitting) return;
+  const err = $('f-error');
+  err.textContent = '';
+  const name = $('f-name').value.trim();
+  const department = $('f-dept').value.trim();
+  const type = $('f-type').value;
+
+  if (!name || !department) { err.textContent = 'Name and department are required.'; return; }
+
+  let url, body;
+  if (type === 'fulltime') {
+    const monthlySalary = Number($('f-salary').value);
+    if ($('f-salary').value.trim() === '' || !Number.isFinite(monthlySalary) || monthlySalary <= 0) {
+      err.textContent = 'Enter a valid monthly salary greater than zero.'; return;
+    }
+    url = employeeUrl('/fulltime');
+    body = { name, department, monthlySalary };
+  } else {
+    const hoursWorked = Number($('f-hours').value);
+    const hourlyRate = Number($('f-rate').value);
+    if ($('f-hours').value.trim() === '' || !Number.isInteger(hoursWorked) || hoursWorked <= 0) {
+      err.textContent = 'Enter hours worked as a whole number greater than zero.'; return;
+    }
+    if ($('f-rate').value.trim() === '' || !Number.isFinite(hourlyRate) || hourlyRate <= 0) {
+      err.textContent = 'Enter a valid hourly rate greater than zero.'; return;
+    }
+    url = employeeUrl('/parttime');
+    body = { name, department, hoursWorked, hourlyRate };
+  }
+
+  state.submitting = true;
+  const submit = $('modal-submit');
+  submit.disabled = true;
+  submit.textContent = 'Adding…';
+  try {
+    await apiRequest(url, { method: 'POST', body });
+    resetModalForm();
+    closeModal();
+    showToast('Employee added successfully.', 'success');
+    await loadAll();
+  } catch (e) {
+    if (!(e instanceof ApiError && e.silent)) {
+      err.textContent = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+    }
+  } finally {
+    state.submitting = false;
+    submit.disabled = false;
+    submit.textContent = 'Add Employee';
+  }
+}
+
+async function deleteEmployee(id, name, button) {
+  if (toNum(id) === null) { showToast('This employee has no valid ID and cannot be removed.', 'error'); return; }
+  if (!window.confirm('Remove ' + name + '? This cannot be undone.')) return;
+  button.disabled = true;
+  try {
+    await apiRequest(employeeUrl('/' + encodeURIComponent(String(id))), { method: 'DELETE' });
+    showToast('Employee removed.', 'success');
+    await loadAll();
+  } catch (e) {
+    if (!(e instanceof ApiError && e.silent)) {
+      showToast(e instanceof ApiError ? e.message : 'Could not remove the employee.', 'error');
+    }
+    button.disabled = false;
+  }
+}
+
+/* ───────────── Initialization ───────────── */
+function initApp() {
+  if (!getToken()) {
+    showAuthScreen('');
+    return;
+  }
+  hideAuthScreen();
+  $('logout-btn').hidden = false;
+  $('open-modal').hidden = false;
+  const username = getUsername();
+  $('user-chip').hidden = !username;
+  $('user-chip').textContent = username ? 'Signed in as ' + username : '';
+  if ($('conn').dataset.state === 'auth') setConnection('ok', 'Backend connected');
+  loadAll();
+}
+
+function bindEvents() {
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.view)));
+  $('open-modal').addEventListener('click', openModal);
+  $('modal-cancel').addEventListener('click', closeModal);
+  $('modal-submit').addEventListener('click', addEmployee);
+  $('f-type').addEventListener('change', toggleFields);
+  $('modal').addEventListener('click', event => { if (event.target === $('modal')) closeModal(); });
+  $('modal').addEventListener('keydown', trapFocus);
+  $('search-input').addEventListener('input', renderEmpTable);
+  $('filter-type').addEventListener('change', renderEmpTable);
+  $('payslip-select').addEventListener('change', renderPayslip);
+  $('auth-form').addEventListener('submit', submitAuth);
+  $('auth-toggle').addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
+  $('logout-btn').addEventListener('click', logout);
+  $('conn-retry').addEventListener('click', checkHealth);
+}
+
+// Startup: bind listeners once, then initialize exactly once.
+bindEvents();
+renderApiView();
 initApp();
+checkHealth();
 </script>
 </body>
 </html>
