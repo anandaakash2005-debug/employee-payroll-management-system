@@ -271,6 +271,40 @@
     .auth-toggle { width: 100%; margin-top: 10px; padding: 10px; background: transparent; color: #c4b5fd; border: 0; cursor: pointer; font-size: 13px; }
     .auth-hint { font-size: 11px; color: var(--dim); margin-top: 12px; text-align: center; }
 
+    /* ── Startup / backend-readiness screen (sits above the auth screen) ── */
+    .startup-screen {
+      position: fixed; inset: 0; z-index: 250; background: var(--bg);
+      display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
+    }
+    .startup-card {
+      width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 32px 28px; text-align: center; outline: none;
+    }
+    .startup-brand { font-family: var(--display); font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 22px; }
+    .startup-brand span { color: var(--accent2); }
+    .startup-spinner {
+      width: 44px; height: 44px; margin: 0 auto 18px; border-radius: 50%;
+      border: 3px solid var(--border2); border-top-color: var(--accent);
+      animation: spin 0.9s linear infinite;
+    }
+    .startup-heading { font-family: var(--display); font-size: 18px; font-weight: 700; margin-bottom: 8px; min-height: 2.6em; display: flex; align-items: center; justify-content: center; }
+    .startup-text { font-size: 13px; color: var(--muted); min-height: 6em; }
+    .startup-status { font-size: 13px; color: var(--text); font-weight: 500; min-height: 3em; margin-top: 4px; }
+    .startup-progress { height: 4px; border-radius: 4px; background: var(--surface); overflow: hidden; margin: 6px 0 12px; position: relative; }
+    .startup-progress-bar {
+      position: absolute; top: 0; bottom: 0; left: 0; width: 35%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      animation: startupSlide 1.6s ease-in-out infinite;
+    }
+    @keyframes startupSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+    .startup-meta { font-size: 12px; color: var(--muted); min-height: 1.5em; font-variant-numeric: tabular-nums; }
+    .startup-detail { font-size: 11px; color: var(--dim); min-height: 3em; margin-top: 4px; }
+    .startup-actions { min-height: 46px; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
+    .startup-card.is-stopped .startup-spinner { animation: none; border-color: rgba(248,113,113,0.45); }
+    .startup-card.is-stopped .startup-progress-bar { visibility: hidden; }
+    .startup-card.is-stopped .startup-heading { color: var(--coral); }
+    .startup-noscript { font-size: 12px; color: var(--amber); margin-top: 12px; }
+
     /* ── Responsive ── */
     @media (max-width: 1000px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
@@ -295,13 +329,34 @@
       td, th { padding: 11px 14px; }
       .modal { padding: 20px; }
       .toast { left: 16px; right: 16px; bottom: 16px; max-width: none; }
+      .startup-card { padding: 26px 20px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
+      /* Without motion, show a static, clearly non-progress bar instead of a fixed 35% segment. */
+      .startup-progress-bar { width: 100%; opacity: 0.35; }
     }
   </style>
 </head>
 <body>
+
+<!-- Startup / backend readiness screen. Visible from the first paint; hidden once the backend reports ready. -->
+<div class="startup-screen" id="startup-screen">
+  <div class="startup-card" id="startup-card" role="dialog" aria-modal="true" aria-labelledby="startup-heading" aria-describedby="startup-text" tabindex="-1">
+    <div class="startup-brand">Payroll<span>Pro</span></div>
+    <div class="startup-spinner" id="startup-spinner" aria-hidden="true"></div>
+    <h2 class="startup-heading" id="startup-heading">Preparing PayrollPro…</h2>
+    <p class="startup-text" id="startup-text">We're waking up the payroll server and checking its availability.</p>
+    <p class="startup-status" id="startup-status" role="status" aria-live="polite">Connecting to the PayrollPro server…</p>
+    <div class="startup-progress" aria-hidden="true"><div class="startup-progress-bar"></div></div>
+    <p class="startup-meta" id="startup-meta"></p>
+    <p class="startup-detail" id="startup-detail"></p>
+    <div class="startup-actions">
+      <button class="btn btn-primary" id="startup-retry" type="button" hidden>Retry</button>
+    </div>
+    <noscript><p class="startup-noscript">JavaScript is required to use PayrollPro.</p></noscript>
+  </div>
+</div>
 
 <!-- Login / registration screen -->
 <div class="auth-screen" id="auth-screen" hidden>
@@ -492,9 +547,22 @@ const AUTH_API     = API_BASE + '/auth';
 const HEALTH_URL   = API_ORIGIN + '/health';
 
 const REQUEST_TIMEOUT_MS = 45000;  // Render free tier can take a while to wake up
-const HEALTH_TIMEOUT_MS  = 30000;
 const TOKEN_KEY    = 'payroll_token';
 const USERNAME_KEY = 'payroll_username';
+
+// Backend readiness (wake-up) settings.
+// The total waiting period and the per-request timeout are separate concepts:
+//  - totalTimeoutMs : how long we keep trying before showing the Retry screen
+//                     (cold start was observed at ~103 s, so we allow 180 s)
+//  - requestTimeoutMs: how long ONE /health request may hang before it is aborted
+const READINESS = {
+  totalTimeoutMs:   180000,
+  requestTimeoutMs: 12000,
+  baseDelayMs:      3000,   // pause between attempts, growing modestly...
+  delayStepMs:      250,    // ...by this much per attempt...
+  maxDelayMs:       5000,   // ...up to this ceiling
+  readyPauseMs:     700     // brief "connection established" message before the app appears
+};
 
 // Illustrative payslip percentages. These are NOT calculated by the backend
 // and are not statutory payroll rules.
@@ -667,6 +735,12 @@ async function apiRequest(url, options) {
   const method = opts.method || 'GET';
   const useAuth = opts.auth !== false;
 
+  // READINESS GATE: no application API request (login, register, employees...) is
+  // sent until the backend has been confirmed ready by the readiness controller.
+  if (!Readiness.isReady()) {
+    throw new ApiError('The server is not ready yet. Please wait for the connection check to finish.', 0, 'network');
+  }
+
   // Never send the JWT anywhere except the configured API.
   if (useAuth && !url.startsWith(API_BASE + '/')) {
     throw new ApiError('Blocked request to an untrusted address.', 0, 'network');
@@ -726,30 +800,334 @@ async function apiRequest(url, options) {
 
 function employeeUrl(path) { return EMPLOYEE_API + (path || ''); }
 
-/* ───────────── Connection status ───────────── */
-let healthCheckInFlight = false;
+/* ───────────── Connection status (sidebar indicator) ───────────── */
 function setConnection(stateName, text) {
   const box = $('conn');
   box.dataset.state = stateName;
   $('conn-text').textContent = text;
   $('conn-retry').hidden = stateName !== 'down';
 }
-async function checkHealth() {
-  if (healthCheckInFlight) return;
-  healthCheckInFlight = true;
-  setConnection('checking', 'Checking connection…');
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
-  try {
-    const res = await fetch(HEALTH_URL, { method: 'GET', signal: controller.signal });
-    if (res.ok) setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
-    else setConnection('down', 'Backend unavailable');
-  } catch (e) {
-    setConnection('down', 'Backend unavailable');
-  } finally {
-    clearTimeout(timer);
-    healthCheckInFlight = false;
+
+/* ═════════════════════════════════════════════════════════════════════
+   BACKEND READINESS CONTROLLER
+   Wakes the Render backend by polling GET /health and reports when it is
+   truly ready. Phases:
+     idle     – not started yet
+     checking – a /health request is in flight
+     waiting  – last request failed / not ready; sleeping before next attempt
+     ready    – valid JSON response with status === "UP" received (terminal)
+     timeout  – overall waiting period expired (Retry allowed)
+     error    – an unexpected condition prevented reliable checking (Retry allowed)
+   Guarantees: at most ONE polling loop and ONE in-flight request at a time;
+   polling stops permanently on success; every timer/request is cleaned up.
+   NOTE: /health returning UP does not itself prove MySQL is reachable.
+   ═════════════════════════════════════════════════════════════════════ */
+const Readiness = (function () {
+  let phase = 'idle';
+  let runId = 0;              // incremented on every start/finish so stale loops exit
+  let attempts = 0;
+  let startedAt = 0;
+  let endedAt = 0;
+  let lastFailure = '';       // 'network' | 'timeout' | 'http' | 'invalid-json' | 'not-up' | 'unsupported'
+  let lastStatus = 0;
+  let currentAbort = null;    // AbortController of the in-flight loop request
+  let sleepTimer = null;
+  let sleepWake = null;
+  let tickTimer = null;
+  let quietBusy = false;
+  const listeners = [];
+
+  function elapsedMs() {
+    if (!startedAt) return 0;
+    const end = (phase === 'ready' || phase === 'timeout' || phase === 'error') ? endedAt : Date.now();
+    return Math.max(0, end - startedAt);
   }
+  function snapshot() {
+    return {
+      state: phase,
+      attempts: attempts,
+      elapsedMs: elapsedMs(),
+      totalMs: READINESS.totalTimeoutMs,
+      lastFailure: lastFailure,
+      lastStatus: lastStatus,
+      offline: typeof navigator !== 'undefined' && navigator.onLine === false
+    };
+  }
+  function emit() {
+    const snap = snapshot();
+    listeners.forEach(fn => {
+      try { fn(snap); } catch (e) { console.error('Readiness listener failed.'); }
+    });
+  }
+  function setPhase(next) { phase = next; emit(); }
+
+  function startTick() { stopTick(); tickTimer = setInterval(emit, 1000); }
+  function stopTick() { if (tickTimer !== null) { clearInterval(tickTimer); tickTimer = null; } }
+
+  // Cancellable sleep: stop/finish wakes it immediately so no timer is left behind.
+  function sleep(ms) {
+    return new Promise(resolve => {
+      sleepWake = resolve;
+      sleepTimer = setTimeout(() => { sleepTimer = null; sleepWake = null; resolve(); }, ms);
+    });
+  }
+  function cancelSleep() {
+    if (sleepTimer !== null) { clearTimeout(sleepTimer); sleepTimer = null; }
+    if (sleepWake) { const wake = sleepWake; sleepWake = null; wake(); }
+  }
+
+  /* One /health request. Plain GET, cache disabled, no custom headers, no no-cors.
+     Ready only if: HTTP success + parsable JSON + status === "UP". */
+  async function probe(timeoutMs, register) {
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    if (register) register(controller);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; if (controller) controller.abort(); }, timeoutMs);
+    try {
+      const res = await fetch(HEALTH_URL, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined
+      });
+      if (!res.ok) return { ok: false, reason: 'http', status: res.status };
+      let text;
+      try { text = await res.text(); }
+      catch (e) { return { ok: false, reason: timedOut ? 'timeout' : 'network' }; }
+      let data;
+      try { data = JSON.parse(text); }
+      catch (e) { return { ok: false, reason: 'invalid-json' }; }
+      if (!data || typeof data !== 'object' || data.status !== 'UP') return { ok: false, reason: 'not-up' };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, reason: timedOut ? 'timeout' : 'network' };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function finish(next) {
+    runId++;                 // invalidate any loop still referencing the old id
+    endedAt = Date.now();
+    cancelSleep();
+    stopTick();
+    if (currentAbort) { try { currentAbort.abort(); } catch (e) { /* ignore */ } currentAbort = null; }
+    setPhase(next);
+  }
+
+  async function run(id) {
+    try {
+      while (id === runId) {
+        const remaining = READINESS.totalTimeoutMs - (Date.now() - startedAt);
+        if (remaining <= 0) { finish('timeout'); return; }
+
+        attempts++;
+        setPhase('checking');
+        const result = await probe(Math.min(READINESS.requestTimeoutMs, remaining), c => { currentAbort = c; });
+        currentAbort = null;
+        if (id !== runId) return;               // superseded or finished meanwhile
+
+        if (result.ok) { finish('ready'); return; }
+
+        lastFailure = result.reason;
+        lastStatus = result.status || 0;
+        const left = READINESS.totalTimeoutMs - (Date.now() - startedAt);
+        if (left <= 0) { finish('timeout'); return; }
+
+        setPhase('waiting');
+        const delay = Math.min(READINESS.maxDelayMs, READINESS.baseDelayMs + (attempts - 1) * READINESS.delayStepMs);
+        await sleep(Math.min(delay, left));
+      }
+    } catch (e) {
+      if (id === runId) { lastFailure = 'unexpected'; finish('error'); }
+    }
+  }
+
+  /* Starts exactly one loop. Ignored while a loop is active or after success. */
+  function start() {
+    if (phase === 'checking' || phase === 'waiting' || phase === 'ready') return false;
+    runId++;
+    const id = runId;
+    attempts = 0;
+    lastFailure = '';
+    lastStatus = 0;
+    startedAt = Date.now();
+    endedAt = 0;
+    if (typeof fetch !== 'function') {
+      lastFailure = 'unsupported';
+      finish('error');
+      return false;
+    }
+    startTick();
+    setPhase('checking');
+    run(id);
+    return true;
+  }
+
+  /* A single quiet health probe (used by the sidebar Retry after startup). */
+  async function probeOnce() {
+    if (quietBusy || phase === 'checking' || phase === 'waiting') return null;
+    quietBusy = true;
+    try { return await probe(READINESS.requestTimeoutMs, null); }
+    finally { quietBusy = false; }
+  }
+
+  return {
+    start: start,
+    probeOnce: probeOnce,
+    isReady: function () { return phase === 'ready'; },
+    getState: function () { return phase; },
+    subscribe: function (fn) { listeners.push(fn); }
+  };
+})();
+
+/* ───────────── Startup screen UI + authentication gate ───────────── */
+let lastStartupPhase = '';
+let startupFinishScheduled = false;
+let startupFinished = false;
+
+function setText(id, text) {
+  const node = $(id);
+  if (node && node.textContent !== text) node.textContent = text;
+}
+
+function formatElapsed(ms) {
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function startupStatusMessage(s) {
+  if (s.state === 'ready') return 'Connection established. Preparing your workspace…';
+  if (s.state === 'timeout') return 'The server is taking longer than expected.';
+  if (s.state === 'error') return 'The connection check could not be completed.';
+  if (s.offline) return "You appear to be offline. We'll keep trying and continue automatically.";
+  if (s.elapsedMs < 8000) return 'Connecting to the PayrollPro server…';
+  if (s.elapsedMs < 45000) return 'The server may be starting after a period of inactivity…';
+  return 'Still waiting for the server to become ready…';
+}
+
+function startupFailureDetail(s) {
+  const stopped = s.state === 'timeout' || s.state === 'error';
+  let base = '';
+  switch (s.lastFailure) {
+    case 'network':      base = 'No response from the server yet.'; break;
+    case 'timeout':      base = 'The last check timed out.'; break;
+    case 'http':         base = 'The server responded with HTTP ' + s.lastStatus + ' and is not ready yet.'; break;
+    case 'invalid-json':
+    case 'not-up':       base = 'The server responded, but not with a ready status.'; break;
+    case 'unsupported':  base = 'This browser cannot run the connection check.'; break;
+    case 'unexpected':   base = 'An unexpected problem stopped the connection check.'; break;
+    default:             base = '';
+  }
+  if (!base) return '';
+  if (stopped && (s.lastFailure === 'network' || s.lastFailure === 'timeout')) {
+    return base + ' This can mean the server is still starting, your network is down, or the browser is blocking the request.';
+  }
+  return base + (stopped ? '' : ' Trying again…');
+}
+
+function setBackgroundInert(on) {
+  ['.sidebar', '.main', '#auth-screen'].forEach(sel => {
+    const node = document.querySelector(sel);
+    if (node) node.inert = !!on;
+  });
+}
+
+function applyAuthLock() {
+  const locked = !Readiness.isReady();
+  const submit = $('auth-submit');
+  const toggle = $('auth-toggle');
+  if (submit) submit.disabled = locked || state.authBusy;
+  if (toggle) toggle.disabled = locked;
+}
+
+function renderStartup(s) {
+  const screen = $('startup-screen');
+  if (!screen) return;
+  const card = $('startup-card');
+  const stopped = s.state === 'timeout' || s.state === 'error';
+
+  if (card) card.classList.toggle('is-stopped', stopped);
+
+  if (s.state === 'timeout') {
+    setText('startup-heading', 'PayrollPro is not ready yet');
+    setText('startup-text', 'The payroll server may still be starting or may be temporarily unavailable. Sign in and registration stay locked until it responds. You can retry without refreshing the page.');
+  } else if (s.state === 'error') {
+    setText('startup-heading', "We couldn't check the server");
+    setText('startup-text', 'Something prevented a reliable connection check. Please retry. If it keeps happening, reload the page or try another browser.');
+  } else {
+    setText('startup-heading', 'Preparing PayrollPro…');
+    setText('startup-text', "We're waking up the payroll server and checking its availability.");
+  }
+
+  setText('startup-status', startupStatusMessage(s));
+
+  let meta = '';
+  if (s.state === 'timeout') meta = 'Stopped after ' + formatElapsed(s.elapsedMs) + ' · ' + s.attempts + ' attempt' + (s.attempts === 1 ? '' : 's');
+  else if (s.state === 'ready') meta = 'Ready after ' + formatElapsed(s.elapsedMs);
+  else if (s.state === 'error') meta = '';
+  else meta = 'Elapsed ' + formatElapsed(s.elapsedMs) + (s.attempts ? ' · Attempt ' + s.attempts : '');
+  setText('startup-meta', meta);
+
+  setText('startup-detail', s.state === 'ready' ? '' : startupFailureDetail(s));
+
+  const retry = $('startup-retry');
+  if (retry) {
+    retry.hidden = !stopped;
+    // Move focus to Retry when we first land in a stopped state; back to the card when retrying.
+    if (stopped && lastStartupPhase !== s.state) retry.focus();
+  }
+  if (!stopped && (lastStartupPhase === 'timeout' || lastStartupPhase === 'error') && card) card.focus();
+  lastStartupPhase = s.state;
+}
+
+function hideStartup() {
+  const screen = $('startup-screen');
+  if (screen) screen.hidden = true;
+  setBackgroundInert(false);
+}
+
+function updateConnFromReadiness(s, previousState) {
+  if (s.state === previousState) return;
+  if (s.state === 'checking' || s.state === 'waiting') {
+    if (previousState !== 'checking' && previousState !== 'waiting') setConnection('checking', 'Waking up the server…');
+  } else if (s.state === 'ready') {
+    setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
+  } else if (s.state === 'timeout' || s.state === 'error') {
+    setConnection('down', 'Backend unavailable');
+  }
+}
+
+let previousReadinessState = 'idle';
+function onReadinessChange(s) {
+  renderStartup(s);
+  applyAuthLock();
+  updateConnFromReadiness(s, previousReadinessState);
+  previousReadinessState = s.state;
+
+  // Backend confirmed ready: show the app exactly once, after a short confirmation message.
+  if (s.state === 'ready' && !startupFinishScheduled) {
+    startupFinishScheduled = true;
+    setTimeout(() => {
+      if (startupFinished) return;
+      startupFinished = true;
+      hideStartup();
+      initApp();            // original startup flow (login screen or dashboard load) now runs
+    }, READINESS.readyPauseMs);
+  }
+}
+
+// Sidebar "Retry": restart readiness if it stopped; otherwise do one quiet re-check.
+async function onConnRetry() {
+  const st = Readiness.getState();
+  if (st === 'timeout' || st === 'error') { Readiness.start(); return; }
+  if (st !== 'ready') return;
+  setConnection('checking', 'Checking connection…');
+  const result = await Readiness.probeOnce();
+  if (!result) return;
+  if (result.ok) setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
+  else setConnection('down', 'Backend unavailable');
 }
 
 /* ───────────── Authentication UI ───────────── */
@@ -795,9 +1173,16 @@ function setAuthMode(mode) {
 async function submitAuth(event) {
   event.preventDefault();
   if (state.authBusy) return;
+  const errorBox = $('auth-error');
+
+  // READINESS GATE (JavaScript-level, independent of the disabled button state).
+  if (!Readiness.isReady()) {
+    errorBox.textContent = 'The server is not ready yet. Please wait for the connection check to finish.';
+    return;
+  }
+
   const username = $('auth-username').value.trim();
   const password = $('auth-password').value;
-  const errorBox = $('auth-error');
   errorBox.textContent = '';
 
   if (!username) { errorBox.textContent = 'Enter your username.'; $('auth-username').focus(); return; }
@@ -835,7 +1220,7 @@ async function submitAuth(event) {
     }
   } finally {
     state.authBusy = false;
-    button.disabled = false;
+    button.disabled = !Readiness.isReady();
     button.textContent = state.authMode === 'login' ? 'Sign in' : 'Register';
     if (idleLabel === '') button.textContent = 'Sign in';
   }
@@ -1292,16 +1677,23 @@ function bindEvents() {
   $('filter-type').addEventListener('change', renderEmpTable);
   $('payslip-select').addEventListener('change', renderPayslip);
   $('auth-form').addEventListener('submit', submitAuth);
-  $('auth-toggle').addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
+  $('auth-toggle').addEventListener('click', () => {
+    if (!Readiness.isReady()) return;   // locked until the backend is ready
+    setAuthMode(state.authMode === 'login' ? 'register' : 'login');
+  });
   $('logout-btn').addEventListener('click', logout);
-  $('conn-retry').addEventListener('click', checkHealth);
+  $('conn-retry').addEventListener('click', onConnRetry);
+  $('startup-retry').addEventListener('click', () => Readiness.start());
 }
 
-// Startup: bind listeners once, then initialize exactly once.
+// Startup: bind listeners once, lock the UI behind the startup screen, then begin
+// waking the backend immediately. initApp() runs exactly once, when readiness succeeds.
 bindEvents();
 renderApiView();
-initApp();
-checkHealth();
+Readiness.subscribe(onReadinessChange);
+setBackgroundInert(true);
+applyAuthLock();
+Readiness.start();
 </script>
 </body>
 </html>
