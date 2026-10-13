@@ -117,6 +117,26 @@
     .btn-ghost:hover:not(:disabled) { color: var(--text); background: rgba(255,255,255,0.05); }
     .content { padding: 24px 28px; flex: 1; }
 
+    /* ── Activity / status banner (slow requests and persistent notices) ── */
+    .activity {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 28px; font-size: 13px;
+      background: #1b1830; border-bottom: 1px solid var(--border2); border-left: 3px solid var(--amber);
+      position: sticky; top: 0; z-index: 4;
+    }
+    .activity[data-tone="error"] { border-left-color: var(--coral); }
+    .activity[data-tone="info"] { border-left-color: var(--teal); }
+    .activity-spinner {
+      width: 16px; height: 16px; flex: none; border-radius: 50%;
+      border: 2px solid var(--border2); border-top-color: var(--amber);
+      animation: spin 0.8s linear infinite;
+    }
+    .activity-text { flex: 1; min-width: 200px; color: var(--text); overflow-wrap: anywhere; }
+    .activity-meta { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .activity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .wait-msg { font-size: 12px; color: var(--amber); min-height: 16px; margin-top: 8px; overflow-wrap: anywhere; }
+    .auth-form .wait-msg { margin-top: 0; margin-bottom: 6px; }
+
     /* ── Metrics ── */
     .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
     .metric { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; min-width: 0; }
@@ -355,6 +375,7 @@
       .nav-item { width: auto; white-space: nowrap; margin-bottom: 0; }
       .main { margin-left: 0; min-height: 0; }
       .topbar { padding: 12px 16px; position: static; }
+      .activity { padding: 10px 16px; }
       .content { padding: 16px; }
       .api-extra { padding-left: 0; }
     }
@@ -405,6 +426,7 @@
     <input class="form-input" id="auth-username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="100" />
     <label class="form-label" for="auth-password">Password</label>
     <input class="form-input" id="auth-password" type="password" autocomplete="current-password" maxlength="200" />
+    <p class="wait-msg" id="auth-wait" role="status" aria-live="polite"></p>
     <p class="auth-error" id="auth-error" role="alert" aria-live="assertive"></p>
     <button class="btn btn-primary" id="auth-submit" type="submit">Sign in</button>
     <button class="auth-toggle" id="auth-toggle" type="button">Create an account</button>
@@ -445,7 +467,7 @@
 
 <!-- Main -->
 <div class="main">
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <h2 class="page-title" id="page-title" tabindex="-1">Dashboard</h2>
     <div class="topbar-actions">
       <span class="user-chip" id="user-chip" hidden></span>
@@ -453,6 +475,14 @@
       <button class="btn btn-ghost" id="logout-btn" type="button" hidden>Sign Out</button>
     </div>
   </header>
+
+  <!-- Slow-request status and persistent notices. Hidden unless a request is taking long or an outcome needs attention. -->
+  <div class="activity" id="activity" data-tone="busy" role="status" aria-live="polite" hidden>
+    <span class="activity-spinner" id="activity-spinner" aria-hidden="true"></span>
+    <span class="activity-text" id="activity-text"></span>
+    <span class="activity-meta" id="activity-meta" aria-hidden="true"></span>
+    <span class="activity-actions" id="activity-actions"></span>
+  </div>
 
   <main class="content">
 
@@ -563,6 +593,7 @@
         <input class="form-input" id="f-rate" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 400" />
       </div>
     </div>
+    <div class="wait-msg" id="f-wait" role="status" aria-live="polite"></div>
     <div class="error-msg" id="f-error" role="alert" aria-live="assertive"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="modal-cancel" type="button">Cancel</button>
@@ -595,6 +626,7 @@
         <textarea class="form-input" id="inc-reason" maxlength="500" placeholder="e.g. Annual performance review"></textarea>
         <div class="form-help"><span>Required</span><span id="inc-count" aria-hidden="true">0/500</span></div>
       </div>
+      <div class="wait-msg" id="inc-wait" role="status" aria-live="polite"></div>
       <div class="error-msg" id="inc-error" role="alert" aria-live="assertive"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="inc-cancel" type="button">Cancel</button>
@@ -627,6 +659,7 @@
         <textarea class="form-input" id="bon-reason" maxlength="500" placeholder="e.g. Project completion bonus"></textarea>
         <div class="form-help"><span>Required</span><span id="bon-count" aria-hidden="true">0/500</span></div>
       </div>
+      <div class="wait-msg" id="bon-wait" role="status" aria-live="polite"></div>
       <div class="error-msg" id="bon-error" role="alert" aria-live="assertive"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="bon-cancel" type="button">Cancel</button>
@@ -673,10 +706,25 @@ const EMPLOYEE_API = API_BASE + '/employees';
 const AUTH_API     = API_BASE + '/auth';
 const HEALTH_URL   = API_ORIGIN + '/health';
 
-const REQUEST_TIMEOUT_MS = 45000;  // Render free tier can take a while to wake up
+// Per-request timeouts. These are separate from the readiness (wake-up) window below.
+//  - Reads (GET) and login/register use REQUEST_TIMEOUT_MS.
+//  - Writes (POST/PUT/DELETE) get longer, because a write that times out has an UNKNOWN outcome.
+const REQUEST_TIMEOUT_MS = 60000;
+const WRITE_TIMEOUT_MS   = 90000;
 const TOKEN_KEY    = 'payroll_token';
 const USERNAME_KEY = 'payroll_username';
 const ROLE_KEY     = 'payroll_role';
+
+// If the browser has had no response from the backend for this long, Render's free tier may have put it to
+// sleep. Before the next request, the app then runs ONE bounded wake-up check (GET /health) so the real
+// request is not sent into a sleeping server. This is on demand only; nothing polls while the user is idle.
+const IDLE_STALE_MS = 3 * 60 * 1000;
+
+// Slow-request feedback. Normal, fast requests show nothing at all.
+const ACTIVITY = {
+  showAfterMs: 4000,    // a request must be this old before any "taking longer" message appears
+  longAfterMs: 20000    // after this, the message also mentions that the server may be waking up
+};
 
 // UI-only switch. When true, "Add Employee" and "Remove" are shown to administrators only.
 // Set to false if your backend lets regular users create/delete employees.
@@ -685,9 +733,9 @@ const ADMIN_ONLY_EMPLOYEE_WRITES = true;
 
 const REASON_MAX = 500;
 
-// Backend readiness (wake-up) settings.
+// Backend readiness (wake-up) settings. Used for the startup check AND for on-demand wake-ups.
 // The total waiting period and the per-request timeout are separate concepts:
-//  - totalTimeoutMs : how long we keep trying before showing the Retry screen
+//  - totalTimeoutMs : how long we keep trying before giving up
 //                     (cold start was observed at ~103 s, so we allow 180 s)
 //  - requestTimeoutMs: how long ONE /health request may hang before it is aborted
 const READINESS = {
@@ -746,10 +794,21 @@ const state = {
   sumError: '',
   loadSeq: 0,             // guards against stale responses
   authMode: 'login',
-  submitting: false,
+  submitting: false,      // in-flight guard for "Add Employee"
+  addUnconfirmed: false,  // a previous "Add Employee" attempt ended with an unknown outcome
   authBusy: false,
   unauthorizedHandled: false
 };
+
+// In-flight guard for deletions: employee id -> 'deleting' (DELETE sent) | 'refreshing' (confirmed, reloading list).
+const pendingDeletes = new Map();
+
+// Employee ids for which the last "Add Bonus" ended with an unknown outcome. Survives closing/reopening the
+// dialog; cleared when the bonus history is loaded successfully (the user has seen the server's data) or a
+// bonus is confirmed saved.
+const bonusUnconfirmed = new Set();
+// Same idea for salary / hourly-rate increases whose last attempt ended with an unknown outcome.
+const incUnconfirmed = new Set();
 
 /* ───────────── Small helpers ───────────── */
 const $ = id => document.getElementById(id);
@@ -818,7 +877,8 @@ function showToast(message, type) {
   t.textContent = (type === 'error' ? '✕ ' : '✓ ') + message;
   t.className = 'toast ' + (type === 'error' ? 'error' : 'success') + ' show';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+  // Errors stay a little longer; anything that needs a decision also gets a persistent notice (see Activity).
+  toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 8000 : 4000);
 }
 
 /* ───────────── Dates (local calendar dates, no timezone shifting) ───────────── */
@@ -897,15 +957,161 @@ function clearSession() {
   } catch (e) { /* ignore */ }
 }
 
+/* ═════════════════════════════════════════════════════════════════════
+   ACTIVITY: slow-request feedback + persistent notices
+   One status banner under the top bar (plus an optional message inside the
+   dialog that started the request). It stays hidden for normal, fast requests
+   and only appears when the oldest pending request has been waiting for
+   ACTIVITY.showAfterMs. Persistent "notices" carry outcomes that need the
+   user's attention (for example an unconfirmed deletion) and can offer actions.
+   The 1-second timer only exists while a request is pending.
+   ═════════════════════════════════════════════════════════════════════ */
+const Activity = (function () {
+  const ops = new Map();
+  let seq = 0;
+  let ticker = null;
+  let notice = null;
+  let renderedNotice = null;
+  let wakeActive = false;
+
+  function oldest() {
+    let found = null;
+    ops.forEach(op => { if (!found || op.start < found.start) found = op; });
+    return found;
+  }
+
+  function describeWait(op, age) {
+    let text;
+    if (wakeActive) {
+      text = 'Waking up the server… This can take up to 2–3 minutes. ' +
+        (op.write ? 'Your change will be sent once the server responds.' : 'Loading will continue automatically.');
+    } else if (age >= ACTIVITY.longAfterMs) {
+      text = op.label + ': the server is taking longer than usual. It may be waking up after a period of inactivity (this can take 2–3 minutes). Please wait.';
+    } else {
+      text = op.label + ': the server is taking longer than usual. Please wait.';
+    }
+    if (op.write) text += ' Please don’t click again.';
+    return text;
+  }
+
+  function setNodeText(node, text) {
+    if (node && node.textContent !== text) node.textContent = text;
+  }
+
+  function stopTicker() {
+    if (ticker !== null) { clearInterval(ticker); ticker = null; }
+  }
+
+  function render() {
+    const box = $('activity');
+    if (!box) return;
+    const now = Date.now();
+
+    // Messages shown inside the dialog that started a slow request.
+    ops.forEach(op => {
+      if (!op.mirror) return;
+      const age = now - op.start;
+      setNodeText($(op.mirror), age >= ACTIVITY.showAfterMs ? describeWait(op, age) : '');
+    });
+
+    const op = oldest();
+    const age = op ? now - op.start : 0;
+    const showBusy = !!op && age >= ACTIVITY.showAfterMs;
+
+    if (!showBusy && !notice) {
+      box.hidden = true;
+      renderedNotice = null;
+      return;
+    }
+
+    const topbar = $('topbar');
+    const sticky = topbar && window.getComputedStyle(topbar).position === 'sticky';
+    box.style.top = sticky ? topbar.offsetHeight + 'px' : '0px';
+    box.hidden = false;
+    const actions = $('activity-actions');
+
+    if (showBusy) {
+      // A running request takes priority so two contradictory messages are never shown together.
+      box.dataset.tone = 'busy';
+      $('activity-spinner').hidden = false;
+      setNodeText($('activity-text'), describeWait(op, age));
+      setNodeText($('activity-meta'), 'Waiting ' + formatElapsed(age));
+      if (renderedNotice !== null || actions.firstChild) { clear(actions); renderedNotice = null; }
+      return;
+    }
+
+    box.dataset.tone = notice.tone || 'warn';
+    $('activity-spinner').hidden = true;
+    setNodeText($('activity-text'), notice.text);
+    setNodeText($('activity-meta'), '');
+    if (renderedNotice !== notice) {
+      clear(actions);
+      (notice.actions || []).forEach(action => {
+        actions.append(el('button', {
+          class: 'action-btn safe', type: 'button', text: action.label,
+          onclick: () => { try { action.onClick(); } catch (e) { console.error('Notice action failed.'); } }
+        }));
+      });
+      actions.append(el('button', { class: 'action-btn', type: 'button', text: 'Dismiss', onclick: () => clearNotice() }));
+      renderedNotice = notice;
+    }
+  }
+
+  function begin(label, options) {
+    const o = options || {};
+    const id = ++seq;
+    ops.set(id, { label: label || 'Contacting the server', write: !!o.write, mirror: o.mirror || '', start: Date.now() });
+    if (o.write) notice = null;                         // starting a new write supersedes an old notice
+    if (ticker === null) ticker = setInterval(render, 1000);
+    render();
+    return {
+      end: function () {
+        const op = ops.get(id);
+        if (!op) return;
+        ops.delete(id);
+        if (op.mirror) setNodeText($(op.mirror), '');
+        if (ops.size === 0) stopTicker();
+        render();
+      }
+    };
+  }
+
+  // tone: 'warn' | 'error' | 'info'; actions: [{ label, onClick }]
+  function setNotice(n) { notice = n || null; render(); }
+  function clearNotice() { notice = null; render(); }
+  function setWake(active) { wakeActive = !!active; render(); }
+
+  return { begin: begin, notice: setNotice, clearNotice: clearNotice, setWake: setWake, render: render };
+})();
+
 /* ───────────── API layer ───────────── */
 class ApiError extends Error {
   constructor(message, status, kind) {
     super(message);
     this.name = 'ApiError';
     this.status = status || 0;
-    this.kind = kind || 'http';   // 'network' | 'timeout' | 'http' | 'session'
+    // 'network' | 'timeout' | 'http' | 'session' | 'unavailable'
+    //   unavailable = the server did not wake up in time and the request was NEVER SENT.
+    this.kind = kind || 'http';
+    this.sent = false;            // true once the request was handed to the network
     this.silent = false;          // true when the UI has already handled it (e.g. 401 -> login)
   }
+}
+
+// When did we last get a real response from the backend? Used only to decide whether a wake-up
+// check is needed before the next request. 0 = unknown / possibly asleep.
+let lastContactAt = 0;
+function markContact() { lastContactAt = Date.now(); }
+function needsWake() { return Date.now() - lastContactAt > IDLE_STALE_MS; }
+
+// True when a write may have been processed even though we did not get a trustworthy confirmation:
+// timeout, lost connection, or ANY server-side error (HTTP 5xx, including 500, 502, 503 and 504).
+// A 5xx does not prove the change was NOT applied (the server may have committed it before failing,
+// or a gateway may have timed out while the server kept working), so it must never be treated as "safe to
+// retry". Only definite client-side rejections (400, 403, 404, 409, 422...) are known failures.
+function isUncertainWrite(e) {
+  return e instanceof ApiError && e.sent &&
+    (e.kind === 'timeout' || e.kind === 'network' || (e.kind === 'http' && e.status >= 500 && e.status <= 599));
 }
 
 function friendlyStatusMessage(status, serverMessage) {
@@ -918,6 +1124,8 @@ function friendlyStatusMessage(status, serverMessage) {
     case 404: return 'The requested item was not found.';
     case 409: return safe || 'That item already exists.';
     case 429: return 'Too many requests. Please wait a moment and try again.';
+    case 502: case 503: case 504:
+      return 'The server is unavailable or still starting (HTTP ' + status + '). Please wait a moment and try again.';
     default:
       return status >= 500
         ? 'The server had a problem handling the request. Please try again shortly.'
@@ -936,10 +1144,22 @@ function extractServerMessage(data) {
   return '';
 }
 
+/*
+  Options: method, body, auth (default true), write (default: method !== 'GET'), timeout (ms),
+           label (shown in the slow-request banner), mirror (id of an element inside a dialog).
+  - Before sending, if the backend may be asleep (idle for IDLE_STALE_MS, or the last request failed
+    with a connection problem), one bounded wake-up check runs first. If it fails, the request is
+    NOT sent (error kind 'unavailable'), so the caller knows nothing was changed.
+  - Writes are never retried here. A timeout/connection loss on a write has an unknown outcome and is
+    reported as such (see isUncertainWrite).
+  - The abort timer stays active until the response BODY has been read, so a stalled body cannot hang forever.
+  - 204 / empty bodies are fine: they resolve to null.
+*/
 async function apiRequest(url, options) {
   const opts = options || {};
-  const method = opts.method || 'GET';
+  const method = String(opts.method || 'GET').toUpperCase();
   const useAuth = opts.auth !== false;
+  const isWrite = opts.write !== undefined ? !!opts.write : method !== 'GET';
 
   // READINESS GATE: no application API request (login, register, employees...) is
   // sent until the backend has been confirmed ready by the readiness controller.
@@ -952,56 +1172,97 @@ async function apiRequest(url, options) {
     throw new ApiError('Blocked request to an untrusted address.', 0, 'network');
   }
 
-  const headers = { 'Accept': 'application/json' };
-  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (useAuth) {
-    const token = getToken();
-    if (!token) {
-      const err = new ApiError('Authentication required. Please sign in.', 401, 'session');
-      err.silent = true;
-      handleUnauthorized();
-      throw err;
-    }
-    headers['Authorization'] = 'Bearer ' + token;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeout || REQUEST_TIMEOUT_MS);
-  let response;
-  try {
-    response = await fetch(url, {
-      method,
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      signal: controller.signal
-    });
-  } catch (e) {
-    if (e && e.name === 'AbortError') {
-      throw new ApiError('The server took too long to respond. It may be waking up — please try again.', 0, 'timeout');
-    }
-    throw new ApiError('Cannot reach the server. Check your connection, or the server may be waking up (this can take up to a minute). This can also be a CORS problem.', 0, 'network');
-  } finally {
-    clearTimeout(timer);
-  }
-
-  let data = null;
-  try {
-    const text = await response.text();
-    if (text) data = JSON.parse(text);
-  } catch (e) {
-    data = null; // empty or non-JSON body
-  }
-
-  if (response.status === 401 && useAuth) {
-    const err = new ApiError('Your session expired. Please sign in again.', 401, 'session');
+  if (useAuth && !getToken()) {
+    const err = new ApiError('Authentication required. Please sign in.', 401, 'session');
     err.silent = true;
     handleUnauthorized();
     throw err;
   }
-  if (!response.ok) {
-    throw new ApiError(friendlyStatusMessage(response.status, extractServerMessage(data)), response.status, 'http');
+
+  const activity = Activity.begin(opts.label, { write: isWrite, mirror: opts.mirror });
+  try {
+    // Wake the backend first if it may be asleep (bounded, on demand, shared between concurrent requests).
+    if (needsWake()) {
+      const awake = await Readiness.wake();
+      if (!awake.ok) {
+        throw new ApiError('The server is not responding yet, so nothing was sent and no changes were made. Please try again in a moment.', 0, 'unavailable');
+      }
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (useAuth) {
+      const token = getToken();
+      if (!token) {
+        // Signed out (or session expired) while we were waiting: the UI is already on the login screen.
+        const err = new ApiError('You were signed out before the request was sent.', 401, 'session');
+        err.silent = true;
+        throw err;
+      }
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    const timeoutMs = opts.timeout || (isWrite ? WRITE_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    let bodyText = '';
+    try {
+      response = await fetch(url, {
+        method,
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        signal: controller.signal
+      });
+      bodyText = await response.text();   // still covered by the abort timer
+    } catch (e) {
+      lastContactAt = 0;                  // next request will check that the backend is awake first
+      const seconds = Math.round(timeoutMs / 1000);
+      let err;
+      if (e && e.name === 'AbortError') {
+        err = new ApiError(isWrite
+          ? 'The server did not respond within ' + seconds + ' seconds, so the result could not be confirmed.'
+          : 'The server took too long to respond (over ' + seconds + ' seconds). It may still be waking up — please try again.', 0, 'timeout');
+      } else {
+        err = new ApiError('Cannot reach the server. It may still be starting, your connection may be down, or the browser may have blocked the request.', 0, 'network');
+      }
+      err.sent = true;
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Any real answer from the server (even 4xx) proves it is awake; gateway errors do not.
+    if (response.status === 502 || response.status === 503 || response.status === 504) lastContactAt = 0;
+    else markContact();
+
+    let data = null;
+    try {
+      if (bodyText) data = JSON.parse(bodyText);
+    } catch (e) {
+      data = null; // empty or non-JSON body
+    }
+
+    if (response.status === 401 && useAuth) {
+      const err = new ApiError('Your session expired. Please sign in again.', 401, 'session');
+      err.sent = true;
+      err.silent = true;
+      handleUnauthorized();
+      throw err;
+    }
+    if (!response.ok) {
+      // For a write, a server error (5xx) leaves the outcome unknown, so the message must not say "try again".
+      const message = isWrite && response.status >= 500
+        ? 'The server reported a problem (HTTP ' + response.status + '), so the result of this change could not be confirmed. Check the current data before trying again.'
+        : friendlyStatusMessage(response.status, extractServerMessage(data));
+      const err = new ApiError(message, response.status, 'http');
+      err.sent = true;
+      throw err;
+    }
+    return data;
+  } finally {
+    activity.end();
   }
-  return data;
 }
 
 function employeeUrl(path) { return EMPLOYEE_API + (path || ''); }
@@ -1009,12 +1270,12 @@ function employeeUrl(path) { return EMPLOYEE_API + (path || ''); }
 function compUrl(id, suffix) { return employeeUrl('/' + encodeURIComponent(String(id)) + suffix); }
 
 // Turns an error into a user-facing message. 403 is reported distinctly, and an
-// ambiguous timeout on a write warns the admin to check history before retrying.
+// unconfirmed write warns the user to check the current data before trying again.
 function errorText(e, mutating) {
   if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
   if (e.status === 403) return 'Permission denied: the server did not allow this action for your account.';
-  if (mutating && e.kind === 'timeout') {
-    return 'The server did not respond in time. The change may or may not have been saved — check the history before trying again.';
+  if (mutating && isUncertainWrite(e)) {
+    return 'The server did not confirm the change (it timed out, the connection dropped, or the server reported an error), so it may or may not have been saved. Check the current data before trying again.';
   }
   return e.message;
 }
@@ -1037,8 +1298,10 @@ function setConnection(stateName, text) {
      ready    – valid JSON response with status === "UP" received (terminal)
      timeout  – overall waiting period expired (Retry allowed)
      error    – an unexpected condition prevented reliable checking (Retry allowed)
-   Guarantees: at most ONE polling loop and ONE in-flight request at a time;
+   Guarantees: at most ONE startup polling loop and ONE in-flight startup request at a time;
    polling stops permanently on success; every timer/request is cleaned up.
+   After startup, wake() offers an on-demand, bounded wake-up check that is shared between
+   concurrent callers (one loop only) and never runs by itself.
    NOTE: /health returning UP does not itself prove MySQL is reachable.
    ═════════════════════════════════════════════════════════════════════ */
 const Readiness = (function () {
@@ -1054,7 +1317,9 @@ const Readiness = (function () {
   let sleepWake = null;
   let tickTimer = null;
   let quietBusy = false;
+  let wakePromise = null;     // the single shared on-demand wake-up loop, if one is running
   const listeners = [];
+  const wakeListeners = [];
 
   function elapsedMs() {
     if (!startedAt) return 0;
@@ -1076,6 +1341,11 @@ const Readiness = (function () {
     const snap = snapshot();
     listeners.forEach(fn => {
       try { fn(snap); } catch (e) { console.error('Readiness listener failed.'); }
+    });
+  }
+  function emitWake(info) {
+    wakeListeners.forEach(fn => {
+      try { fn(info); } catch (e) { console.error('Wake listener failed.'); }
     });
   }
   function setPhase(next) { phase = next; emit(); }
@@ -1116,6 +1386,7 @@ const Readiness = (function () {
       try { data = JSON.parse(text); }
       catch (e) { return { ok: false, reason: 'invalid-json' }; }
       if (!data || typeof data !== 'object' || data.status !== 'UP') return { ok: false, reason: 'not-up' };
+      markContact();
       return { ok: true };
     } catch (e) {
       return { ok: false, reason: timedOut ? 'timeout' : 'network' };
@@ -1182,7 +1453,7 @@ const Readiness = (function () {
     return true;
   }
 
-  /* A single quiet health probe (used by the sidebar Retry after startup). */
+  /* A single quiet health probe. */
   async function probeOnce() {
     if (quietBusy || phase === 'checking' || phase === 'waiting') return null;
     quietBusy = true;
@@ -1190,12 +1461,51 @@ const Readiness = (function () {
     finally { quietBusy = false; }
   }
 
+  /* On-demand wake-up after startup. Polls /health (bounded by READINESS.totalTimeoutMs) until the
+     backend answers UP. Concurrent callers share ONE loop. Resolves { ok, reason, attempts }; never rejects. */
+  function wake() {
+    if (phase !== 'ready') return Promise.resolve({ ok: false, reason: 'not-ready', attempts: 0 });
+    if (wakePromise) return wakePromise;
+    emitWake({ active: true });
+    const loop = (async function () {
+      const t0 = Date.now();
+      let tries = 0;
+      let ok = false;
+      let failure = 'timeout';
+      try {
+        for (;;) {
+          const remaining = READINESS.totalTimeoutMs - (Date.now() - t0);
+          if (remaining <= 0) break;
+          tries++;
+          const result = await probe(Math.min(READINESS.requestTimeoutMs, remaining), null);
+          if (result.ok) { ok = true; break; }
+          failure = result.reason;
+          const left = READINESS.totalTimeoutMs - (Date.now() - t0);
+          if (left <= 0) break;
+          const delay = Math.min(READINESS.maxDelayMs, READINESS.baseDelayMs + (tries - 1) * READINESS.delayStepMs, left);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } catch (e) {
+        failure = 'unexpected';
+      }
+      return { ok: ok, reason: ok ? '' : failure, attempts: tries };
+    })().then(result => {
+      wakePromise = null;
+      emitWake({ active: false, ok: result.ok });
+      return result;
+    });
+    wakePromise = loop;
+    return loop;
+  }
+
   return {
     start: start,
     probeOnce: probeOnce,
+    wake: wake,
     isReady: function () { return phase === 'ready'; },
     getState: function () { return phase; },
-    subscribe: function (fn) { listeners.push(fn); }
+    subscribe: function (fn) { listeners.push(fn); },
+    subscribeWake: function (fn) { wakeListeners.push(fn); }
   };
 })();
 
@@ -1337,16 +1647,32 @@ function onReadinessChange(s) {
   }
 }
 
-// Sidebar "Retry": restart readiness if it stopped; otherwise do one quiet re-check.
+// On-demand wake-ups (after the app has started). The sidebar indicator only changes if the wake-up is
+// actually slow, so a quick health check after a short idle period causes no flicker.
+let wakeIndicatorTimer = null;
+function onWakeChange(info) {
+  Activity.setWake(info.active);
+  if (info.active) {
+    clearTimeout(wakeIndicatorTimer);
+    wakeIndicatorTimer = setTimeout(() => {
+      wakeIndicatorTimer = null;
+      setConnection('checking', 'Waking up the server…');
+    }, 2500);
+    return;
+  }
+  clearTimeout(wakeIndicatorTimer);
+  wakeIndicatorTimer = null;
+  if (info.ok) setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
+  else setConnection('down', 'Server not responding');
+}
+
+// Sidebar "Retry": restart readiness if startup stopped; otherwise run one bounded wake-up check.
 async function onConnRetry() {
   const st = Readiness.getState();
   if (st === 'timeout' || st === 'error') { Readiness.start(); return; }
   if (st !== 'ready') return;
-  setConnection('checking', 'Checking connection…');
-  const result = await Readiness.probeOnce();
-  if (!result) return;
-  if (result.ok) setConnection(getToken() ? 'ok' : 'auth', getToken() ? 'Backend connected' : 'Backend connected — sign in required');
-  else setConnection('down', 'Backend unavailable');
+  const result = await Readiness.wake();     // onWakeChange keeps the indicator up to date
+  if (result.ok && getToken() && state.empStatus === 'error') loadAll();
 }
 
 /* ───────────── Dialog helper (new compensation dialogs) ─────────────
@@ -1425,7 +1751,8 @@ function showAuthScreen(message) {
   $('logout-btn').hidden = true;
   $('user-chip').hidden = true;
   $('open-modal').hidden = true;
-  closeModal();
+  Activity.clearNotice();
+  closeModal(true);
   closeCompDialogs();
   const box = $('conn');
   if (box.dataset.state === 'ok') setConnection('auth', 'Authentication required');
@@ -1446,6 +1773,10 @@ function handleUnauthorized() {
   state.loadSeq++;               // discard in-flight dashboard responses
   state.employees = [];
   state.summary = null;
+  pendingDeletes.clear();
+  bonusUnconfirmed.clear();
+  incUnconfirmed.clear();
+  state.addUnconfirmed = false;
   showAuthScreen('Your session expired or authentication is required. Please sign in again.');
 }
 
@@ -1489,8 +1820,12 @@ async function submitAuth(event) {
   button.textContent = 'Please wait…';
 
   try {
-    const endpoint = AUTH_API + (state.authMode === 'login' ? '/login' : '/register');
-    const data = await apiRequest(endpoint, { method: 'POST', auth: false, body: { username, password } });
+    const login = state.authMode === 'login';
+    const endpoint = AUTH_API + (login ? '/login' : '/register');
+    const data = await apiRequest(endpoint, {
+      method: 'POST', auth: false, write: false, body: { username, password },
+      label: login ? 'Signing in' : 'Creating your account', mirror: 'auth-wait'
+    });
     if (!data || typeof data.token !== 'string' || !data.token) {
       throw new ApiError('The server did not return a session token. Please try again.', 0, 'http');
     }
@@ -1503,6 +1838,8 @@ async function submitAuth(event) {
       errorBox.textContent = 'Invalid username or password.';
     } else if (err instanceof ApiError && err.kind === 'http' && err.status === 403) {
       errorBox.textContent = state.authMode === 'login' ? 'Invalid username or password.' : 'Registration is not allowed for those details.';
+    } else if (state.authMode === 'register' && isUncertainWrite(err)) {
+      errorBox.textContent = 'No confirmation was received from the server. Your account may have been created — try signing in before registering again.';
     } else if (err instanceof ApiError) {
       errorBox.textContent = err.message;
     } else {
@@ -1524,29 +1861,42 @@ function logout() {
   state.summary = null;
   state.empStatus = 'loading';
   state.sumStatus = 'loading';
+  pendingDeletes.clear();
+  bonusUnconfirmed.clear();
+  incUnconfirmed.clear();
+  state.addUnconfirmed = false;
   setAuthMode('login');
   $('auth-username').value = '';
   showAuthScreen('');
   renderAll();
 }
 
-/* ───────────── Data loading ───────────── */
-async function loadAll() {
+/* ───────────── Data loading ─────────────
+   loadAll({ quiet: true }) refreshes WITHOUT blanking the tables first (used after a write, so the screen
+   does not flicker). Resolves to:
+     true  – the employee list was loaded
+     false – the employee list could not be loaded (the error state is shown)
+     null  – superseded by a newer refresh, or the user signed out; nothing to report                       */
+async function loadAll(opts) {
+  const quiet = !!(opts && opts.quiet === true) && state.empStatus === 'ready';
   const seq = ++state.loadSeq;
-  state.empStatus = 'loading';
-  state.sumStatus = 'loading';
-  renderAll();
+  if (!quiet) {
+    state.empStatus = 'loading';
+    state.sumStatus = 'loading';
+    renderAll();
+  }
 
   const [empResult, sumResult] = await Promise.allSettled([
-    apiRequest(employeeUrl('')),
-    apiRequest(employeeUrl('/summary'))
+    apiRequest(employeeUrl(''), { label: 'Loading employees' }),
+    apiRequest(employeeUrl('/summary'), { label: 'Loading payroll summary' })
   ]);
-  if (seq !== state.loadSeq || !getToken()) return; // stale or logged out
+  if (seq !== state.loadSeq || !getToken()) return null; // stale or logged out
 
   if (empResult.status === 'fulfilled' && Array.isArray(empResult.value)) {
     state.employees = empResult.value.filter(item => item && typeof item === 'object');
     state.empStatus = 'ready';
     state.empError = '';
+    state.addUnconfirmed = false;   // the user now has a fresh server view of the list
     if ($('conn').dataset.state !== 'ok') setConnection('ok', 'Backend connected');
   } else {
     state.employees = [];
@@ -1554,8 +1904,9 @@ async function loadAll() {
     state.empError = empResult.status === 'rejected'
       ? (empResult.reason && empResult.reason.message) || 'Could not load employees.'
       : 'The server returned an unexpected response for the employee list.';
-    if (empResult.status === 'rejected' && empResult.reason && empResult.reason.kind === 'network') {
-      setConnection('down', 'Backend unavailable');
+    if (empResult.status === 'rejected' && empResult.reason &&
+        ['network', 'timeout', 'unavailable'].includes(empResult.reason.kind)) {
+      setConnection('down', 'Server not responding');
     }
   }
 
@@ -1572,6 +1923,7 @@ async function loadAll() {
   }
 
   renderAll();
+  return state.empStatus === 'ready';
 }
 
 /* ───────────── Rendering ───────────── */
@@ -1580,7 +1932,7 @@ function stateBox(kind, title, detail, retryLabel, retryFn) {
   if (kind === 'loading') box.append(el('div', { class: 'spinner', 'aria-hidden': 'true' }));
   box.append(el('div', { class: 'state-title', text: title }));
   if (detail) box.append(el('div', { text: detail }));
-  if (retryLabel && retryFn) box.append(el('button', { class: 'btn btn-ghost', type: 'button', text: retryLabel, onclick: retryFn }));
+  if (retryLabel && retryFn) box.append(el('button', { class: 'btn btn-ghost', type: 'button', text: retryLabel, onclick: () => retryFn() }));
   return box;
 }
 
@@ -1641,7 +1993,8 @@ function renderDashTable() {
   if (state.sumStatus === 'error' && state.empStatus === 'ready') {
     host.append(el('div', { class: 'inline-note', text: 'Payroll summary is unavailable (' + state.sumError + ') — totals above are calculated from the employee list.' }));
   }
-  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching from API…', 'The server may take a moment to wake up.')); return; }
+  // The "taking longer than usual" message is shown by the status banner only when a request is actually slow.
+  if (state.empStatus === 'loading') { host.append(stateBox('loading', 'Fetching from API…')); return; }
   if (state.empStatus === 'error') { host.append(stateBox('error', 'Could not load employees', state.empError, 'Try again', loadAll)); return; }
   if (!state.employees.length) {
     host.append(canManageEmployees()
@@ -1697,34 +2050,61 @@ function filteredEmployees() {
   });
 }
 
+// Label/aria state of a "Remove" button. phase: null | 'deleting' | 'refreshing'.
+function applyRemoveState(btn, name, phase) {
+  if (!btn) return;
+  btn.textContent = phase === 'deleting' ? 'Removing…' : phase === 'refreshing' ? 'Refreshing…' : 'Remove';
+  btn.setAttribute('aria-label', phase === 'deleting' ? 'Removing ' + name
+    : phase === 'refreshing' ? 'Refreshing the list after removing ' + name
+    : 'Remove ' + name);
+  btn.setAttribute('aria-busy', phase ? 'true' : 'false');
+  btn.disabled = !!phase;
+}
+
+// Immediately locks every button of one employee row (in place, so nothing re-renders mid-request).
+function lockRow(button, name, phase) {
+  if (!button || !button.isConnected) return;
+  const group = button.closest('.act-group');
+  if (group) group.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  applyRemoveState(button, name, phase);
+}
+
+function focusRemove(key) {
+  const safe = String(key).replace(/["\\]/g, '');
+  const node = document.querySelector('#emp-table-body [data-emp-id="' + safe + '"]');
+  if (node && !node.disabled && typeof node.focus === 'function') node.focus();
+}
+
 // Builds the per-row action buttons. Compensation actions are admin-only (UI only;
 // the backend independently enforces authorization on every request).
 function buildActions(e) {
   const name = textOf(e.name, 'this employee');
   const group = el('div', { class: 'act-group' });
   const kind = employeeKind(e);
+  const pending = pendingDeletes.get(String(e.id)) || null;   // survives re-renders while a removal is in flight
   if (isAdmin()) {
     const incLabel = kind === 'PT' ? 'Increase Hourly Rate' : 'Increase Monthly Salary';
     group.append(
       el('button', {
         class: 'action-btn safe', type: 'button', text: incLabel,
         'aria-label': incLabel + ' for ' + name,
-        disabled: kind === 'UNK',
+        disabled: kind === 'UNK' || !!pending,
         title: kind === 'UNK' ? 'Employee type is not recognised' : false,
         onclick: () => openIncrease(e.id)
       }),
       el('button', {
         class: 'action-btn safe', type: 'button', text: 'Add Bonus',
-        'aria-label': 'Add bonus for ' + name, onclick: () => openBonus(e.id)
+        'aria-label': 'Add bonus for ' + name, disabled: !!pending, onclick: () => openBonus(e.id)
       }),
       el('button', {
         class: 'action-btn safe', type: 'button', text: 'Compensation History',
-        'aria-label': 'View compensation history for ' + name, onclick: () => openHistory(e.id, 'salary')
+        'aria-label': 'View compensation history for ' + name, disabled: !!pending, onclick: () => openHistory(e.id, 'salary')
       }));
   }
   if (canManageEmployees()) {
-    const del = el('button', { class: 'action-btn danger', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name });
+    const del = el('button', { class: 'action-btn danger', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name, 'data-emp-id': String(e.id) });
     del.addEventListener('click', () => deleteEmployee(e.id, name, del));
+    if (pending) applyRemoveState(del, name, pending);
     group.append(del);
   }
   return group;
@@ -1892,9 +2272,12 @@ function resetModalForm() {
   toggleFields();
   $('f-error').textContent = '';
 }
-function closeModal() {
+// While an "Add Employee" request is in flight the dialog stays open, so its result is always visible.
+function closeModal(force) {
+  if (state.submitting && force !== true) return;
   $('modal').classList.remove('open');
   $('f-error').textContent = '';
+  $('f-wait').textContent = '';
   if (lastFocus && typeof lastFocus.focus === 'function') restoreFocus(lastFocus);
   lastFocus = null;
 }
@@ -1913,9 +2296,82 @@ function trapFocus(event) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 }
 
+/* ───────────── Persistent notices for outcomes that need attention ───────────── */
+
+// A write ended without a confirmation (timeout / connection lost). Never repeated automatically.
+function noteUncertainWrite(what, action) {
+  Activity.notice({
+    tone: 'warn',
+    text: 'The server did not give a reliable answer, so it is not certain whether it ' + what + '. It may or may not have been saved — please check the current data before repeating the action.',
+    actions: action ? [action] : []
+  });
+}
+
+// The write was confirmed, but reloading the data afterwards failed.
+function noteRefreshFailed(prefix) {
+  Activity.notice({
+    tone: 'warn',
+    text: prefix + ' However, the latest data could not be loaded (' + state.empError + '), so what you see may be out of date.',
+    actions: [{ label: 'Refresh list', onClick: checkEmployeeList }]
+  });
+}
+
+// Reloads the employee list from the backend (the source of truth) and reports the result.
+async function checkEmployeeList() {
+  Activity.clearNotice();
+  const res = await loadAll();
+  if (res === false) {
+    Activity.notice({
+      tone: 'error',
+      text: 'The employee list still could not be loaded: ' + state.empError,
+      actions: [{ label: 'Try again', onClick: checkEmployeeList }]
+    });
+  } else if (res === true) {
+    showToast('Employee list refreshed from the server.', 'success');
+  }
+}
+
+// After an unconfirmed removal: reload the list and tell the user what the server actually says.
+async function verifyDeletion(id, name) {
+  Activity.clearNotice();
+  const res = await loadAll();
+  if (res === true) {
+    if (findEmployee(id)) {
+      Activity.notice({
+        tone: 'info',
+        text: name + ' is still in the employee list, so the removal did not go through. You can click Remove to try again.'
+      });
+    } else {
+      showToast(name + ' is no longer in the list — the removal did go through.', 'success');
+    }
+  } else if (res === false) {
+    Activity.notice({
+      tone: 'error',
+      text: 'Could not load the employee list to confirm the removal: ' + state.empError,
+      actions: [{ label: 'Try again', onClick: () => verifyDeletion(id, name) }]
+    });
+  }
+}
+
+// Runs a bounded wake-up check on request (used when a request was not sent because the server did not respond).
+async function checkConnection() {
+  Activity.clearNotice();
+  const result = await Readiness.wake();
+  if (result.ok) {
+    showToast('The server is responding.', 'success');
+    if (getToken() && state.empStatus === 'error') loadAll();
+  } else {
+    Activity.notice({
+      tone: 'error',
+      text: 'The server is still not responding. Nothing was changed.',
+      actions: [{ label: 'Check again', onClick: checkConnection }]
+    });
+  }
+}
+
 /* ───────────── Employee actions ───────────── */
 async function addEmployee() {
-  if (state.submitting) return;
+  if (state.submitting) return;                    // in-flight guard
   if (!canManageEmployees()) return;
   const err = $('f-error');
   err.textContent = '';
@@ -1946,42 +2402,102 @@ async function addEmployee() {
     body = { name, department, hoursWorked, hourlyRate };
   }
 
+  // A previous attempt ended without a confirmation: sending again could create a duplicate employee.
+  if (state.addUnconfirmed && !window.confirm('A previous attempt to add an employee did not get a confirmation from the server and may already have been saved. Check the employee list first — adding again could create a duplicate.\n\nAdd this employee anyway?')) {
+    return;
+  }
+
   state.submitting = true;
   const submit = $('modal-submit');
+  const cancel = $('modal-cancel');
   submit.disabled = true;
+  cancel.disabled = true;
   submit.textContent = 'Adding…';
+  let added = false;
   try {
-    await apiRequest(url, { method: 'POST', body });
-    resetModalForm();
-    closeModal();
-    showToast('Employee added successfully.', 'success');
-    await loadAll();
+    // Never retried automatically: a repeated POST after an unknown outcome could create a duplicate.
+    await apiRequest(url, { method: 'POST', body, label: 'Adding ' + name, mirror: 'f-wait' });
+    added = true;
   } catch (e) {
     if (!(e instanceof ApiError && e.silent)) {
       err.textContent = errorText(e, true);
+      if (isUncertainWrite(e)) {
+        state.addUnconfirmed = true;
+        noteUncertainWrite('added ' + name, { label: 'Check employee list', onClick: checkEmployeeList });
+      }
     }
   } finally {
     state.submitting = false;
     submit.disabled = false;
+    cancel.disabled = false;
     submit.textContent = 'Add Employee';
+  }
+
+  if (added) {
+    state.addUnconfirmed = false;
+    resetModalForm();
+    closeModal();
+    showToast('Employee added successfully.', 'success');
+    const res = await loadAll({ quiet: true });      // the backend stays the source of truth
+    if (res === false) noteRefreshFailed('The employee was added.');
   }
 }
 
 async function deleteEmployee(id, name, button) {
   if (!canManageEmployees()) return;
+  const key = String(id);
+  if (pendingDeletes.has(key)) return;             // in-flight guard: repeated clicks never send a second DELETE
   if (toNum(id) === null) { showToast('This employee has no valid ID and cannot be removed.', 'error'); return; }
   if (!window.confirm('Remove ' + name + '? This cannot be undone.')) return;
-  button.disabled = true;
+  if (pendingDeletes.has(key)) return;             // re-check after the (blocking) confirmation
+
+  pendingDeletes.set(key, 'deleting');
+  Activity.clearNotice();
+  lockRow(button, name, 'deleting');               // disabled + "Removing…" immediately
+
   try {
-    await apiRequest(employeeUrl('/' + encodeURIComponent(String(id))), { method: 'DELETE' });
-    showToast('Employee removed.', 'success');
-    await loadAll();
+    // Sent exactly once. A DELETE is never retried automatically.
+    await apiRequest(employeeUrl('/' + encodeURIComponent(key)), { method: 'DELETE', label: 'Removing ' + name });
   } catch (e) {
-    if (!(e instanceof ApiError && e.silent)) {
-      showToast(errorText(e, false), 'error');
+    pendingDeletes.delete(key);
+    renderEmpTable();                              // restores the buttons (also if the list was re-rendered meanwhile)
+    focusRemove(key);
+    if (e instanceof ApiError && e.silent) return; // session handling already took over
+    if (isUncertainWrite(e)) {
+      noteUncertainWrite('removed ' + name, { label: 'Check employee list', onClick: () => verifyDeletion(key, name) });
+      showToast('Removal of ' + name + ' could not be confirmed.', 'error');
+    } else if (e instanceof ApiError && e.kind === 'unavailable') {
+      Activity.notice({
+        tone: 'error',
+        text: e.message + ' ' + name + ' was not removed.',
+        actions: [{ label: 'Check connection', onClick: checkConnection }]
+      });
+      showToast(name + ' was not removed: the server is not responding.', 'error');
+    } else if (e instanceof ApiError && e.status === 404) {
+      showToast(name + ' was not found on the server. Refreshing the list…', 'error');
+      loadAll({ quiet: true });
+    } else {
+      showToast(errorText(e, true), 'error');
     }
-    button.disabled = false;
+    return;
   }
+
+  // Confirmed by the server (200 / 204). Now reload from the backend; never just edit the local array.
+  pendingDeletes.set(key, 'refreshing');
+  lockRow(button, name, 'refreshing');
+  showToast(name + ' removed.', 'success');
+  const res = await loadAll({ quiet: true });
+  pendingDeletes.delete(key);
+  if (res === false) {
+    noteRefreshFailed(name + ' was removed on the server.');
+  } else if (res === true && findEmployee(id)) {
+    Activity.notice({
+      tone: 'warn',
+      text: 'The server reported that ' + name + ' was removed, but ' + name + ' still appears in the refreshed list. Please refresh again or contact the administrator.',
+      actions: [{ label: 'Refresh list', onClick: checkEmployeeList }]
+    });
+  }
+  renderAll();                                     // also refreshes the payslip selector and clears any leftover busy state
 }
 
 /* ═════════════════════════════════════════════════════════════════════
@@ -2036,6 +2552,7 @@ function setBusy(dlg, submitBtn, cancelBtn, busy, idleLabel, busyLabel) {
 /* ───────────── Increase salary / hourly rate ───────────── */
 function openIncrease(id) {
   if (!isAdmin()) return;
+  if (pendingDeletes.has(String(id))) return;
   const emp = findEmployee(id);
   if (!emp) { showToast('Employee not found. Refresh and try again.', 'error'); return; }
   const kind = employeeKind(emp);
@@ -2045,7 +2562,7 @@ function openIncrease(id) {
   if (incDlg.isOpen()) return;
 
   const monthly = kind === 'FT';
-  incCtx = { id: String(emp.id), kind, current, monthly, name: textOf(emp.name, 'Unnamed') };
+  incCtx = { id: String(emp.id), kind, current, monthly, name: textOf(emp.name, 'Unnamed'), unconfirmed: incUnconfirmed.has(String(emp.id)) };
 
   $('inc-title').textContent = monthly ? 'Increase Monthly Salary' : 'Increase Hourly Rate';
   $('inc-emp-name').textContent = incCtx.name + ' (#' + incCtx.id + ')';
@@ -2059,6 +2576,7 @@ function openIncrease(id) {
   $('inc-reason').value = '';
   $('inc-count').textContent = '0/' + REASON_MAX;
   $('inc-error').textContent = '';
+  $('inc-wait').textContent = '';
   incDlg.open('inc-rate');
 }
 
@@ -2083,33 +2601,50 @@ async function submitIncrease(event) {
   const reason = readReason($('inc-reason'));
   if (reason.error) { err.textContent = reason.error; $('inc-reason').focus(); return; }
 
+  // A previous attempt ended without a confirmation: a second increase could be applied on top of the first.
+  if (incCtx.unconfirmed && !window.confirm('The previous attempt to save an increase for this employee did not get a confirmation from the server and may already have been applied. Check the Compensation History first — saving again could apply a second increase.\n\nSave this increase anyway?')) {
+    return;
+  }
+
   const ctx = incCtx;
   const idle = 'Save Increase';
   setBusy(incDlg, $('inc-submit'), $('inc-cancel'), true, idle, 'Saving…');
   try {
     // The backend updates the employee and writes the history record in one transaction.
+    // Never retried automatically; the server also rejects a rate that is not higher than the current one.
     await apiRequest(compUrl(ctx.id, '/salary-increments'), {
       method: 'PUT',
-      body: { newRate: rate.value, effectiveDate: date.value, reason: reason.value }
+      body: { newRate: rate.value, effectiveDate: date.value, reason: reason.value },
+      label: 'Saving the ' + (ctx.monthly ? 'salary' : 'hourly rate') + ' increase', mirror: 'inc-wait'
     });
     setBusy(incDlg, $('inc-submit'), $('inc-cancel'), false, idle, 'Saving…');
+    incUnconfirmed.delete(ctx.id);
     incDlg.close(true);
     showToast((ctx.monthly ? 'Monthly salary' : 'Hourly rate') + ' increase recorded for ' + ctx.name + '.', 'success');
     if (hist && hist.id === ctx.id) loadHistory('salary');
-    await loadAll();
+    const res = await loadAll({ quiet: true });
+    if (res === false) noteRefreshFailed('The increase was recorded for ' + ctx.name + '.');
   } catch (e) {
     setBusy(incDlg, $('inc-submit'), $('inc-cancel'), false, idle, 'Saving…');
-    if (!(e instanceof ApiError && e.silent)) err.textContent = errorText(e, true);   // form values are kept
+    if (!(e instanceof ApiError && e.silent)) {
+      err.textContent = errorText(e, true);   // form values are kept
+      if (isUncertainWrite(e)) {
+        ctx.unconfirmed = true;
+        incUnconfirmed.add(ctx.id);
+        noteUncertainWrite('saved the increase for ' + ctx.name, { label: 'Check Compensation History', onClick: () => openHistory(ctx.id, 'salary') });
+      }
+    }
   }
 }
 
 /* ───────────── Add bonus ───────────── */
 function openBonus(id) {
   if (!isAdmin()) return;
+  if (pendingDeletes.has(String(id))) return;
   const emp = findEmployee(id);
   if (!emp) { showToast('Employee not found. Refresh and try again.', 'error'); return; }
   if (bonDlg.isOpen()) return;
-  bonCtx = { id: String(emp.id), name: textOf(emp.name, 'Unnamed') };
+  bonCtx = { id: String(emp.id), name: textOf(emp.name, 'Unnamed'), unconfirmed: bonusUnconfirmed.has(String(emp.id)) };
   $('bon-emp-name').textContent = bonCtx.name;
   $('bon-emp-id').textContent = '#' + bonCtx.id;
   $('bon-amount').value = '';
@@ -2118,6 +2653,7 @@ function openBonus(id) {
   $('bon-reason').value = '';
   $('bon-count').textContent = '0/' + REASON_MAX;
   $('bon-error').textContent = '';
+  $('bon-wait').textContent = '';
   bonDlg.open('bon-amount');
 }
 
@@ -2135,6 +2671,11 @@ async function submitBonus(event) {
   const reason = readReason($('bon-reason'));
   if (reason.error) { err.textContent = reason.error; $('bon-reason').focus(); return; }
 
+  // A previous attempt ended without a confirmation: sending again could record the bonus twice.
+  if (bonCtx.unconfirmed && !window.confirm('The previous attempt to add this bonus did not get a confirmation from the server and may already have been saved. Check the Bonus History first — adding again could create a duplicate.\n\nAdd this bonus anyway?')) {
+    return;
+  }
+
   const ctx = bonCtx;
   const idle = 'Add Bonus';
   setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), true, idle, 'Adding…');
@@ -2142,16 +2683,25 @@ async function submitBonus(event) {
     // Never auto-retried: a repeated POST after an ambiguous timeout could duplicate the bonus.
     const data = await apiRequest(compUrl(ctx.id, '/bonuses'), {
       method: 'POST',
-      body: { amount: amount.value, bonusDate: date.value, reason: reason.value }
+      body: { amount: amount.value, bonusDate: date.value, reason: reason.value },
+      label: 'Adding the bonus', mirror: 'bon-wait'
     });
     setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), false, idle, 'Adding…');
+    bonusUnconfirmed.delete(ctx.id);
     bonDlg.close(true);
     const status = data && typeof data.status === 'string' && data.status ? data.status.toUpperCase() : '';
     showToast('Bonus recorded for ' + ctx.name + (status ? ' (status: ' + status + ').' : '.'), 'success');
     openHistory(ctx.id, 'bonus');                   // shows the new bonus with its real backend status
   } catch (e) {
     setBusy(bonDlg, $('bon-submit'), $('bon-cancel'), false, idle, 'Adding…');
-    if (!(e instanceof ApiError && e.silent)) err.textContent = errorText(e, true);   // form values are kept
+    if (!(e instanceof ApiError && e.silent)) {
+      err.textContent = errorText(e, true);   // form values are kept
+      if (isUncertainWrite(e)) {
+        ctx.unconfirmed = true;
+        bonusUnconfirmed.add(ctx.id);
+        noteUncertainWrite('added the bonus for ' + ctx.name, { label: 'Check Bonus History', onClick: () => openHistory(ctx.id, 'bonus') });
+      }
+    }
   }
 }
 
@@ -2239,11 +2789,17 @@ async function loadHistory(which) {
   h[which] = { status: 'loading', rows: [], error: '' };
   renderHistPanel(which);
   try {
-    const data = await apiRequest(compUrl(h.id, which === 'salary' ? '/salary-increments' : '/bonuses'));
+    const data = await apiRequest(compUrl(h.id, which === 'salary' ? '/salary-increments' : '/bonuses'), {
+      label: which === 'salary' ? 'Loading salary history' : 'Loading bonus history'
+    });
     if (hist !== h || h.seq[which] !== seq) return;
     const rows = normalizeList(data);
     if (!rows) h[which] = { status: 'error', rows: [], error: 'The server returned an unexpected response.' };
-    else h[which] = { status: rows.length ? 'ready' : 'empty', rows: rows, error: '' };
+    else {
+      h[which] = { status: rows.length ? 'ready' : 'empty', rows: rows, error: '' };
+      if (which === 'bonus') bonusUnconfirmed.delete(h.id);
+      else incUnconfirmed.delete(h.id);
+    }
   } catch (e) {
     if (hist !== h || h.seq[which] !== seq) return;
     if (e instanceof ApiError && e.silent) return;  // session handling already took over
@@ -2310,13 +2866,13 @@ function initApp() {
 }
 
 function bindEvents() {
-  incDlg = createDialog('inc-modal', () => { incCtx = null; });
-  bonDlg = createDialog('bon-modal', () => { bonCtx = null; });
+  incDlg = createDialog('inc-modal', () => { incCtx = null; $('inc-wait').textContent = ''; });
+  bonDlg = createDialog('bon-modal', () => { bonCtx = null; $('bon-wait').textContent = ''; });
   histDlg = createDialog('hist-modal', () => { hist = null; });
 
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.view)));
   $('open-modal').addEventListener('click', openModal);
-  $('modal-cancel').addEventListener('click', closeModal);
+  $('modal-cancel').addEventListener('click', () => closeModal());
   $('modal-submit').addEventListener('click', addEmployee);
   $('f-type').addEventListener('change', toggleFields);
   $('modal').addEventListener('click', event => { if (event.target === $('modal')) closeModal(); });
@@ -2359,6 +2915,7 @@ function bindEvents() {
 bindEvents();
 renderApiView();
 Readiness.subscribe(onReadinessChange);
+Readiness.subscribeWake(onWakeChange);
 setBackgroundInert(true);
 applyAuthLock();
 Readiness.start();
