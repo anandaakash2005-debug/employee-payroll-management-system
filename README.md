@@ -170,7 +170,7 @@ Each employee has a parent row and a corresponding subtype row (`FULL_TIME` or `
 
 ### Initialization
 
-[application.properties](src/main/resources/application.properties) sets `spring.jpa.hibernate.ddl-auto=update`. Hibernate can create/update the four mapped tables and their mapped constraints **inside an existing database**, provided connection and schema permissions allow it. This does not create the MySQL database itself or provide versioned migrations.
+[application.properties](src/main/resources/application.properties) uses `spring.jpa.hibernate.ddl-auto=validate`, with automatic Flyway execution disabled. Apply reviewed V1–V3 migrations explicitly before startup. For an existing populated database, follow the [production repair runbook](docs/backend/PRODUCTION_REPAIR.md), including backup restoration, explicit baseline confirmation and Hibernate validation. Do not switch to Hibernate auto-update to bypass missing columns.
 
 `DataLoader.run()` inserts five demo employees (three full-time, two part-time) when the employee repository is empty, and skips insertion otherwise. It runs at every backend startup, so restarting after deleting all employees reintroduces demo records. It creates no login accounts. The seed total is 261000 salary units and the average is 52200.
 
@@ -397,7 +397,7 @@ Each member should explain their implementation, relevant OOP concepts, validati
 - Update endpoints cannot change employee type, although the dialog permits selecting another type and then receives a backend error.
 - Part-time hourly rate is labelled **Additional Value**. Dashboard metrics need manual refresh; saves may block the UI while waiting for the API.
 - Results are not paginated, employee names are not unique, and department/type filters have no desktop controls.
-- `ddl-auto=update` and automatic demo seeding are development conveniences; there is no migration or backup automation.
+- Production uses Hibernate validation and disables demo seeding. Versioned migrations and an isolated backup rehearsal utility are described in the [production repair runbook](docs/backend/PRODUCTION_REPAIR.md).
 - Tests use H2 and do not include desktop automation or live MySQL/Aiven verification.
 - Older web-oriented guides and browser artifacts differ from the current Java workflow.
 

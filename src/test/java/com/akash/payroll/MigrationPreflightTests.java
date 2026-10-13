@@ -14,9 +14,9 @@ class MigrationPreflightTests {
              var statement=connection.createStatement()) {
             statement.execute("CREATE TABLE employees(id BIGINT, employee_type VARCHAR(31))");
             statement.execute("CREATE TABLE full_time_employees(id BIGINT, monthly_salary DOUBLE)");
-            statement.execute("CREATE TABLE part_time_employees(id BIGINT, hourly_rate DOUBLE)");
+            statement.execute("CREATE TABLE part_time_employees(id BIGINT, hourly_rate DOUBLE, hours_worked INT)");
             statement.execute("CREATE TABLE salary_increments(id BIGINT, employee_id BIGINT, effective_date DATE, previous_rate DECIMAL(12,2), new_rate DECIMAL(12,2), pay_basis VARCHAR(20))");
-            statement.execute("CREATE TABLE employee_bonuses(id BIGINT, amount DECIMAL(12,2), status VARCHAR(20))");
+            statement.execute("CREATE TABLE employee_bonuses(id BIGINT, employee_id BIGINT, amount DECIMAL(12,2), status VARCHAR(20))");
             statement.execute("INSERT INTO employees VALUES(1,'FULL_TIME')");
             statement.execute("INSERT INTO full_time_employees VALUES(1,60000.25)");
             statement.execute("INSERT INTO salary_increments VALUES(1,1,'2020-01-01',50000,60000.25,'MONTHLY')");

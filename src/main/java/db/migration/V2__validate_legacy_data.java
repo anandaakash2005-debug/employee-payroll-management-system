@@ -9,16 +9,29 @@ import java.sql.SQLException;
 /** Fail closed rather than rounding, deleting or repairing ambiguous legacy financial data. */
 public class V2__validate_legacy_data extends BaseJavaMigration {
     @Override
-    public Integer getChecksum() { return 1; }
+    public Integer getChecksum() { return 2; }
 
     @Override
     public void migrate(Context context) throws Exception {
-        Connection connection = context.getConnection();
+        validate(context.getConnection());
+    }
+
+    /** Also used read-only before any baseline or migration writes. */
+    public void validate(Connection connection) throws SQLException {
+        rejectRows(connection, "SELECT e.id FROM employees e LEFT JOIN full_time_employees f ON f.id=e.id LEFT JOIN part_time_employees p ON p.id=e.id WHERE e.employee_type IS NULL OR e.employee_type NOT IN ('FULL_TIME','PART_TIME') OR (e.employee_type='FULL_TIME' AND (f.id IS NULL OR p.id IS NOT NULL)) OR (e.employee_type='PART_TIME' AND (p.id IS NULL OR f.id IS NOT NULL))",
+                "Invalid employee subtype requires manual review");
+        for (String table : java.util.List.of("full_time_employees", "part_time_employees", "salary_increments", "employee_bonuses")) {
+            String key = table.endsWith("employees") ? "id" : "employee_id";
+            rejectRows(connection, "SELECT t.id FROM " + table + " t LEFT JOIN employees e ON e.id=t." + key + " WHERE e.id IS NULL",
+                    "Orphaned employee reference requires manual review");
+        }
+        rejectRows(connection, "SELECT id FROM part_time_employees WHERE hours_worked IS NULL OR hours_worked < 0",
+                "Invalid legacy hours require manual review");
         checkMoney(connection, "SELECT monthly_salary FROM full_time_employees");
         checkMoney(connection, "SELECT hourly_rate FROM part_time_employees");
         rejectRows(connection, "SELECT employee_id FROM salary_increments GROUP BY employee_id, effective_date HAVING COUNT(*) > 1",
                 "Duplicate increment dates require manual review");
-        rejectRows(connection, "SELECT id FROM salary_increments WHERE previous_rate <= 0 OR new_rate <= previous_rate",
+        rejectRows(connection, "SELECT id FROM salary_increments WHERE previous_rate IS NULL OR new_rate IS NULL OR effective_date IS NULL OR pay_basis IS NULL OR previous_rate <= 0 OR new_rate <= previous_rate",
                 "Invalid legacy increment requires manual review");
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of(
                 System.getenv().getOrDefault("PAYROLL_TIMEZONE", "Asia/Kolkata")));
@@ -28,7 +41,7 @@ public class V2__validate_legacy_data extends BaseJavaMigration {
                 if (rows.next()) fail("Prematurely applied legacy increment requires manual review");
             }
         }
-        rejectRows(connection, "SELECT id FROM employee_bonuses WHERE amount <= 0 OR status NOT IN ('PENDING','PAID','CANCELLED')",
+        rejectRows(connection, "SELECT id FROM employee_bonuses WHERE amount IS NULL OR status IS NULL OR amount <= 0 OR status NOT IN ('PENDING','PAID','CANCELLED')",
                 "Invalid legacy bonus requires manual review");
         try (var statement = connection.createStatement(); var rows = statement.executeQuery(
                 "SELECT s.employee_id, s.previous_rate, s.new_rate, s.pay_basis, e.employee_type, " +

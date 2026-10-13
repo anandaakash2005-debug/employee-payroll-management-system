@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         "spring.jpa.hibernate.ddl-auto=validate", "spring.flyway.enabled=true",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect"})
 class MySqlCompensationTests extends CompensationIntegrationTests {
-    @Container static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0.36");
+    @Container static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4");
     @DynamicPropertySource static void datasource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", mysql::getJdbcUrl);
         registry.add("spring.datasource.username", mysql::getUsername);

@@ -1,5 +1,7 @@
 # Backend deployment runbook
 
+For the populated Aiven database repair, use [PRODUCTION_REPAIR.md](PRODUCTION_REPAIR.md). It supersedes the migration commands below with explicit confirmation flags, safe `.env` loading, MySQL 8.4/Java 17 backup rehearsal, and separate Hibernate schema validation. Do not bypass the new runner guards.
+
 Nothing has been pushed, deployed, or migrated on Aiven. Follow this runbook only after reviewing the diff and authorizing a production migration with a verified backup.
 
 ## Before production
